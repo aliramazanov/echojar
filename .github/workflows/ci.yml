@@ -1,0 +1,72 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: maven
+
+      - name: Build and test
+        run: mvn --batch-mode --no-transfer-progress verify
+
+      - name: Check the agent jar carries its bootstrap
+        shell: bash
+        run: |
+          jar=target/echojar.jar
+          [ -f "$jar" ] || { echo "$jar was not produced"; exit 1; }
+          jar tf "$jar" | grep -q 'com/aliramazanov/echojar/echojar-bootstrap.jar' \
+            || { echo "the bootstrap jar is missing from the agent jar"; exit 1; }
+          if jar tf "$jar" | grep -q 'com/aliramazanov/echojar/bootstrap/.*\.class'; then
+            echo "bootstrap classes leaked into the agent jar, they would load twice"
+            exit 1
+          fi
+
+      - name: Smoke test the agent and the CLI
+        shell: bash
+        run: |
+          java -jar target/echojar.jar list > /dev/null
+          java -javaagent:target/echojar.jar=threshold=3,framework=com.aliramazanov.echojar.fake. \
+            -cp target/test-classes shop.HotPath 2>&1 | tee agent.out
+          grep -q 'echo in 1 call site' agent.out \
+            || { echo "the agent did not report the planted echo"; exit 1; }
+
+      - name: Upload the agent jar
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: echojar
+          path: target/echojar.jar
+          if-no-files-found: error
+
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-${{ matrix.os }}
+          path: |
+            target/surefire-reports/
+            target/failsafe-reports/

@@ -1,5 +1,7 @@
 # echojar
 
+[![ci](https://github.com/aliramazanov/echojar/actions/workflows/ci.yml/badge.svg)](https://github.com/aliramazanov/echojar/actions/workflows/ci.yml)
+
 **How many queries did that request really make?** Attach to a running JVM and hear the echo.
 
 echojar is a Java agent. It attaches to an application you did not modify, listens at the

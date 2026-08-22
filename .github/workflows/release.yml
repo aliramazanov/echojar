@@ -1,0 +1,54 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to build and publish
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: maven
+
+      - name: Build and test
+        run: mvn --batch-mode --no-transfer-progress verify
+
+      - name: Check the tag matches the version that was built
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          version=$(unzip -p target/echojar.jar \
+            META-INF/maven/com.aliramazanov/echojar/pom.properties | sed -n 's/^version=//p' | tr -d '\r')
+          if [ "$tag" != "v$version" ]; then
+            echo "tag $tag does not match the built version $version"
+            exit 1
+          fi
+          echo "tag $tag matches the built jar"
+
+      - name: Check the jar is runnable
+        run: |
+          java -jar target/echojar.jar list > /dev/null
+          unzip -l target/echojar.jar | grep -q 'echojar-bootstrap.jar'
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          files: target/echojar.jar
+          generate_release_notes: true
+          fail_on_unmatched_files: true
