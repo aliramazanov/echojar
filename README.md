@@ -79,6 +79,17 @@ Attaching to a running JVM needs dynamic agent loading. JDK 21 and later print a
 and a future release will turn it off by default, so start the application with
 `-XX:+EnableDynamicAgentLoading` if you want the warning gone.
 
+## Get it
+
+Download `echojar.jar` from the [releases page](https://github.com/aliramazanov/echojar/releases).
+Each release carries a checksum and a build provenance attestation, so you can confirm the jar came
+out of this repository:
+
+```bash
+sha256sum -c echojar.jar.sha256
+gh attestation verify echojar.jar --repo aliramazanov/echojar
+```
+
 ## Build
 
 ```bash

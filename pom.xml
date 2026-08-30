@@ -3,7 +3,7 @@
 
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.aliramazanov</groupId>
+  <groupId>io.github.aliramazanov</groupId>
   <artifactId>echojar</artifactId>
   <version>0.2.0</version>
 

@@ -103,10 +103,18 @@ build provenance attestation. Any of those failing stops the release rather than
 something that cannot be checked. Only then is the tag created and the release published with the
 jar and its checksum.
 
-Publishing to Maven Central is set up but switched off, because it needs credentials this
-repository does not have. The `release` profile already builds the sources jar, the javadoc jar and
-the signatures. Turning it on means adding `MAVEN_USERNAME`, `MAVEN_PASSWORD`, `GPG_PRIVATE_KEY`
-and `GPG_PASSPHRASE` as repository secrets and adding a deploy step to the release workflow.
+Publishing to Maven Central is wired into the release, but it only runs when the credentials are
+there. Without a `MAVEN_USERNAME` secret the step reports that it is skipping and the release goes
+out on GitHub alone, so nothing fails while the account is being set up.
+
+Four secrets switch it on, which are `MAVEN_USERNAME`, `MAVEN_PASSWORD`, `GPG_PRIVATE_KEY` and
+`GPG_PASSPHRASE`. The username and password come from a Central Portal account, and the key is an
+ascii armoured private GPG key whose public half has been sent to a keyserver, because Central
+checks the signature against one.
+
+The namespace is `io.github.aliramazanov`, which Central hands out for free to a GitHub account
+after asking you to create a public repository with a name it chooses. A namespace under `com.`
+would instead need you to own the matching domain and prove it with a DNS record.
 
 ## Reporting a bug
 
