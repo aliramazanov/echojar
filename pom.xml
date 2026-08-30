@@ -28,7 +28,7 @@
     <junit.version>5.11.4</junit.version>
     <jar.version>3.5.1</jar.version>
     <shade.version>3.6.2</shade.version>
-    <surefire.version>3.5.2</surefire.version>
+    <surefire.version>3.5.6</surefire.version>
     <bootstrap.package>com/aliramazanov/echojar/bootstrap</bootstrap.package>
   </properties>
 
