@@ -25,14 +25,17 @@ public final class HotPath {
         }
 
         long[] samples = new long[leases];
+
         for (int run = 0; run < leases; run++) {
             long started = System.nanoTime();
             lease(perLease);
             samples[run] = System.nanoTime() - started;
         }
+
         Arrays.sort(samples);
 
         long total = 0;
+
         for (long sample : samples) {
             total += sample;
         }
@@ -53,6 +56,7 @@ public final class HotPath {
                     statement.setInt(1, query);
                     statement.executeQuery();
                 }
+
                 return;
             }
 

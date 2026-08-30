@@ -50,6 +50,7 @@ final class CallSites {
                     return true;
                 }
             }
+
             return false;
         }
 

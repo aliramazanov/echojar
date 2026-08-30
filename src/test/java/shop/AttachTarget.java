@@ -7,13 +7,14 @@ import java.util.List;
 
 import com.aliramazanov.echojar.fake.Db;
 import com.aliramazanov.echojar.fake.FakeDriver;
+import org.jetbrains.annotations.NotNull;
 
 public final class AttachTarget {
 
     private AttachTarget() {
     }
 
-    public static void main(String[] arguments) throws Exception {
+    public static void main(String @NotNull [] arguments) throws Exception {
         Path signal = Path.of(arguments[0]);
         workload();
         System.out.println("pre-attach=" + Db.executed().size());
@@ -32,7 +33,7 @@ public final class AttachTarget {
         System.out.flush();
     }
 
-    private static String findings() {
+    private static @NotNull String findings() {
         try {
             Class<?> ledger = Class.forName("com.aliramazanov.echojar.bootstrap.findings.Ledger");
             List<?> found = (List<?>) ledger.getMethod("findings").invoke(null);
@@ -41,7 +42,7 @@ public final class AttachTarget {
                 return "none";
             }
 
-            Object first = found.get(0);
+            Object first = found.getFirst();
             Object template = first.getClass().getMethod("template").invoke(first);
             Object peak = first.getClass().getMethod("peakPerLease").invoke(first);
             Object site = first.getClass().getMethod("site").invoke(first);

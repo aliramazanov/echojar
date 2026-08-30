@@ -9,6 +9,8 @@ import com.aliramazanov.echojar.bootstrap.watch.Journal;
 
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 
 import static net.bytebuddy.matcher.ElementMatchers.nameStartsWith;
 import static net.bytebuddy.matcher.ElementMatchers.none;
@@ -68,7 +70,8 @@ final class EchoConfig {
         this.thresholdIfSet = options.containsKey("threshold") ? threshold : 0;
     }
 
-    static EchoConfig parse(String arguments) {
+    @Contract("_ -> new")
+    static @NotNull EchoConfig parse(String arguments) {
         Map<String, String> options = new LinkedHashMap<>();
 
         if (arguments != null && !arguments.isBlank()) {
@@ -104,7 +107,7 @@ final class EchoConfig {
         }
     }
 
-    private static ElementMatcher.Junction<TypeDescription> matcher(List<String> prefixes) {
+    private static ElementMatcher.Junction<TypeDescription> matcher(@NotNull List<String> prefixes) {
         ElementMatcher.Junction<TypeDescription> matcher = none();
 
         for (String prefix : prefixes) {
@@ -136,7 +139,7 @@ final class EchoConfig {
         return value < 1 ? fallback : value;
     }
 
-    private static int integer(Map<String, String> options, String key, int fallback) {
+    private static int integer(@NotNull Map<String, String> options, String key, int fallback) {
         String value = options.get(key);
 
         if (value == null) {
@@ -150,7 +153,7 @@ final class EchoConfig {
         }
     }
 
-    private static boolean bool(Map<String, String> options, String key, boolean fallback) {
+    private static boolean bool(@NotNull Map<String, String> options, String key, boolean fallback) {
         String value = options.get(key);
 
         if (value == null) {

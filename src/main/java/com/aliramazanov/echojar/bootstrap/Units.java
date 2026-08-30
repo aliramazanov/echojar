@@ -35,9 +35,11 @@ public final class Units {
 
     private static void finish() {
         Frame frame = FRAMES.get();
+
         if (frame.depth > 0) {
             frame.depth--;
         }
+
         if (frame.depth != 0) {
             return;
         }

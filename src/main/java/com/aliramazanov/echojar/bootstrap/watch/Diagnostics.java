@@ -1,5 +1,8 @@
 package com.aliramazanov.echojar.bootstrap.watch;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.atomic.LongAdder;
@@ -72,7 +75,7 @@ public final class Diagnostics {
         Journal.warn(site + " suppressed: " + describeBriefly(failure));
     }
 
-    private static String describeBriefly(Throwable failure) {
+    private static @NotNull String describeBriefly(@NotNull Throwable failure) {
         StackTraceElement[] frames = failure.getStackTrace();
         String origin = frames.length == 0 ? "no frame" : frames[0].toString();
         return failure.getClass().getName() + ": " + failure.getMessage() + " at " + origin;
@@ -95,7 +98,8 @@ public final class Diagnostics {
         FIRST_FAILURE.clear();
     }
 
-    public static Snapshot snapshot() {
+    @Contract(" -> new")
+    public static @NotNull Snapshot snapshot() {
         Map<Site, Long> suppressed = new EnumMap<>(Site.class);
         Map<Site, String> examples = new EnumMap<>(Site.class);
 

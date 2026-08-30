@@ -19,6 +19,7 @@ final class WeakIdentityMap<V> {
 
     V computeIfAbsent(Object key, Supplier<V> factory) {
         expunge();
+
         V existing = entries.get(new Key(key, null));
         if (existing != null) {
             return existing;

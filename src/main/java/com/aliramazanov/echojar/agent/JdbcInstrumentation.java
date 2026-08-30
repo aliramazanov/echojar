@@ -16,6 +16,8 @@ import net.bytebuddy.description.modifier.Visibility;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.implementation.FieldAccessor;
 import net.bytebuddy.matcher.ElementMatcher;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 
 import static net.bytebuddy.matcher.ElementMatchers.hasSuperType;
 import static net.bytebuddy.matcher.ElementMatchers.isAbstract;
@@ -66,7 +68,7 @@ final class JdbcInstrumentation {
         return built;
     }
 
-    private static AgentBuilder connectionFields(AgentBuilder agent, EchoConfig config) {
+    private static @NotNull AgentBuilder connectionFields(@NotNull AgentBuilder agent, EchoConfig config) {
         return agent.type(notYetLoaded(concrete(CONNECTION, config)))
                 .transform((builder, type, loader, module, domain) -> Modules.reading(
                         module,
@@ -79,7 +81,7 @@ final class JdbcInstrumentation {
                 ).method(named("echojarLease")).intercept(FieldAccessor.ofField(LEASE_FIELD)));
     }
 
-    private static AgentBuilder connectionAdvice(AgentBuilder agent, EchoConfig config) {
+    private static @NotNull AgentBuilder connectionAdvice(@NotNull AgentBuilder agent, EchoConfig config) {
         return agent.type(declares(CONNECTION, config))
                 .transform((builder, type, loader, module, domain) -> Modules.reading(
                                 module,
@@ -93,7 +95,7 @@ final class JdbcInstrumentation {
                                 )).and(isPublic()))));
     }
 
-    private static AgentBuilder preparedFields(AgentBuilder agent, EchoConfig config) {
+    private static @NotNull AgentBuilder preparedFields(@NotNull AgentBuilder agent, EchoConfig config) {
         return agent.type(notYetLoaded(concrete(PREPARED, config)))
                 .transform((builder, type, loader, module, domain) -> Modules.reading(
                                 module,
@@ -109,7 +111,7 @@ final class JdbcInstrumentation {
                         .intercept(FieldAccessor.ofField(BATCH_FIELD)));
     }
 
-    private static AgentBuilder executeAdvice(AgentBuilder agent, EchoConfig config) {
+    private static @NotNull AgentBuilder executeAdvice(@NotNull AgentBuilder agent, EchoConfig config) {
         return agent.type(declares(PREPARED, config).or(byName(PREPARED_BY_NAME, config)))
                 .transform((builder, type, loader, module, domain) -> Modules.reading(
                         module,
@@ -133,7 +135,7 @@ final class JdbcInstrumentation {
                 ).and(takesArgument(0, String.class)).and(isPublic()))));
     }
 
-    private static AgentBuilder preparedBatchAdvice(AgentBuilder agent, EchoConfig config) {
+    private static @NotNull AgentBuilder preparedBatchAdvice(@NotNull AgentBuilder agent, EchoConfig config) {
         return agent.type(declares(PREPARED, config))
                 .transform((builder, type, loader, module, domain) -> Modules.reading(
                                 module,
@@ -147,7 +149,7 @@ final class JdbcInstrumentation {
                                 .on(named("clearBatch").and(takesNoArguments()).and(isPublic()))));
     }
 
-    private static AgentBuilder statementFields(AgentBuilder agent, EchoConfig config) {
+    private static @NotNull AgentBuilder statementFields(@NotNull AgentBuilder agent, EchoConfig config) {
         return agent.type(notYetLoaded(concrete(STATEMENT, config).and(not(hasSuperType(named(
                 PREPARED)))))).transform((builder, type, loader, module, domain) -> Modules.reading(
                         module,
@@ -158,7 +160,7 @@ final class JdbcInstrumentation {
                 .intercept(FieldAccessor.ofField(BATCH_SQL_FIELD)));
     }
 
-    private static AgentBuilder statementBatchAdvice(AgentBuilder agent, EchoConfig config) {
+    private static @NotNull AgentBuilder statementBatchAdvice(@NotNull AgentBuilder agent, EchoConfig config) {
         ElementMatcher.Junction<TypeDescription> plain = declares(STATEMENT, config).and(not(
                 hasSuperType(named(PREPARED))));
         return agent.type(plain)
@@ -175,32 +177,33 @@ final class JdbcInstrumentation {
                                 .on(named("clearBatch").and(takesNoArguments()).and(isPublic()))));
     }
 
-    private static RawMatcher notYetLoaded(ElementMatcher<? super TypeDescription> types) {
+    @Contract(pure = true)
+    private static @NotNull RawMatcher notYetLoaded(ElementMatcher<? super TypeDescription> types) {
         return (type, loader, module, loaded, domain) -> loaded == null && types.matches(type);
     }
 
-    private static ElementMatcher.Junction<TypeDescription> concrete(
+    private static ElementMatcher.@NotNull Junction<TypeDescription> concrete(
             String iface,
             EchoConfig config
     ) {
         return declares(iface, config).and(not(isAbstract()));
     }
 
-    private static ElementMatcher.Junction<TypeDescription> byName(
-            ElementMatcher.Junction<TypeDescription> names,
-            EchoConfig config
+    private static ElementMatcher.@NotNull Junction<TypeDescription> byName(
+            ElementMatcher.@NotNull Junction<TypeDescription> names,
+            @NotNull EchoConfig config
     ) {
         return names.and(not(isInterface())).and(not(config.ignoredTypes()));
     }
 
-    private static ElementMatcher.Junction<TypeDescription> declares(
+    private static ElementMatcher.@NotNull Junction<TypeDescription> declares(
             String iface,
-            EchoConfig config
+            @NotNull EchoConfig config
     ) {
         return hasSuperType(named(iface)).and(not(isInterface())).and(not(config.ignoredTypes()));
     }
 
-    static ElementMatcher.Junction<TypeDescription> globalIgnores(EchoConfig config) {
+    static ElementMatcher.@NotNull Junction<TypeDescription> globalIgnores(@NotNull EchoConfig config) {
         return nameStartsWith("com.aliramazanov.echojar.shaded.").or(nameStartsWith(
                         "com.aliramazanov.echojar.bootstrap."))
                 .or(nameStartsWith("com.aliramazanov.echojar.agent."))

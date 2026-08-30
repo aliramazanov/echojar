@@ -1,5 +1,7 @@
 package com.aliramazanov.echojar.agent;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.List;
 import java.util.Locale;
 
@@ -28,7 +30,7 @@ final class Noise {
     private Noise() {
     }
 
-    static boolean matches(String normalized) {
+    static boolean matches(@NotNull String normalized) {
         String lower = normalized.toLowerCase(Locale.ROOT).trim();
 
         while (lower.endsWith(";")) {
@@ -54,7 +56,7 @@ final class Noise {
         return false;
     }
 
-    private static boolean containsIdentifier(String sql, String identifier) {
+    private static boolean containsIdentifier(@NotNull String sql, String identifier) {
         int from = 0;
 
         while (true) {

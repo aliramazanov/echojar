@@ -31,10 +31,12 @@ public final class OrderService {
 
     public void insertBatch(int rows) throws SQLException {
         PreparedStatement insert = connection.prepareStatement("INSERT INTO audit (note) VALUES (?)");
+
         for (int row = 0; row < rows; row++) {
             insert.setString(1, "row " + row);
             insert.addBatch();
         }
+
         insert.executeBatch();
     }
 

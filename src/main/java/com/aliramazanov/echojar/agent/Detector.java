@@ -14,6 +14,8 @@ import com.aliramazanov.echojar.bootstrap.findings.OpenLeases;
 import com.aliramazanov.echojar.bootstrap.findings.SqlTemplate;
 import com.aliramazanov.echojar.bootstrap.watch.Diagnostics;
 import com.aliramazanov.echojar.bootstrap.watch.EchoEvent;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 final class Detector implements EchoSink {
 
@@ -24,7 +26,7 @@ final class Detector implements EchoSink {
     private final ConcurrentMap<Integer, Attribution> attributions = new ConcurrentHashMap<>();
     private final int threshold;
 
-    Detector(EchoConfig config) {
+    Detector(@NotNull EchoConfig config) {
         this.templates = new Templates(config.templateCacheLimit(), config.suppressNoise());
 
         this.sites = new CallSites(
@@ -49,7 +51,7 @@ final class Detector implements EchoSink {
     }
 
     @Override
-    public SqlTemplate template(String rawSql) {
+    public @Nullable SqlTemplate template(String rawSql) {
         SqlTemplate template = templates.of(rawSql);
 
         if (template.noise()) {
@@ -58,7 +60,7 @@ final class Detector implements EchoSink {
 
         if (attributions.get(template.id()) == null) {
             attributions.computeIfAbsent(
-                    template.id(), key -> {
+                    template.id(), _ -> {
                         Attribution first = new Attribution();
                         first.walks.incrementAndGet();
                         Diagnostics.stackWalk();
@@ -72,14 +74,14 @@ final class Detector implements EchoSink {
     }
 
     @Override
-    public void executed(Lease lease, Echoes echoes) {
+    public void executed(Lease lease, @NotNull Echoes echoes) {
         if (echoes.executions() < threshold || echoes.site() != null) {
             return;
         }
 
         Attribution attribution = attributions.computeIfAbsent(
                 echoes.template().id(),
-                key -> new Attribution()
+                _ -> new Attribution()
         );
 
         CallSite resolved = attribute(attribution);
@@ -92,7 +94,7 @@ final class Detector implements EchoSink {
         );
     }
 
-    private CallSite attribute(Attribution attribution) {
+    private CallSite attribute(@NotNull Attribution attribution) {
         if (attribution.walks.get() >= WALKS_PER_TEMPLATE) {
             return attribution.site;
         }
@@ -117,20 +119,20 @@ final class Detector implements EchoSink {
     }
 
     @Override
-    public void leaseClosed(Lease lease) {
+    public void leaseClosed(@NotNull Lease lease) {
         List<Echoes> closing = lease.echoes();
         attribute(closing);
         OpenLeases.closed(lease);
         Ledger.record(closing);
     }
 
-    void resolve(List<Lease> pending) {
+    void resolve(@NotNull List<Lease> pending) {
         for (Lease lease : pending) {
             attribute(lease.echoes());
         }
     }
 
-    private void attribute(List<Echoes> echoing) {
+    private void attribute(@NotNull List<Echoes> echoing) {
         for (Echoes echoes : echoing) {
             if (echoes.site() == null) {
                 Attribution known = attributions.get(echoes.template().id());

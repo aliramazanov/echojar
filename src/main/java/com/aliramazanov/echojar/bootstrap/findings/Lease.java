@@ -1,5 +1,8 @@
 package com.aliramazanov.echojar.bootstrap.findings;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -10,7 +13,7 @@ public final class Lease {
     private final Map<SqlTemplate, Echoes> byTemplate = new HashMap<>();
 
 
-    public synchronized Echoes record(SqlTemplate template, int count) {
+    public synchronized @NotNull Echoes record(SqlTemplate template, int count) {
         Echoes echoes = byTemplate.computeIfAbsent(template, Echoes::new);
         echoes.record(count);
         return echoes;
@@ -20,7 +23,8 @@ public final class Lease {
         return byTemplate.isEmpty();
     }
 
-    public synchronized List<Echoes> echoes() {
+    @Contract(" -> new")
+    public synchronized @NotNull List<Echoes> echoes() {
         return new ArrayList<>(byTemplate.values());
     }
 }

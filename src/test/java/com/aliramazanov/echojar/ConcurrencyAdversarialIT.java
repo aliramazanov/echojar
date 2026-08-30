@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -22,6 +23,22 @@ class ConcurrencyAdversarialIT {
 
     private static final String SQL = "SELECT * FROM racy_item WHERE order_id = ?";
 
+    private static long total() {
+        long total = 0;
+
+        for (Finding finding : Ledger.findings(OpenLeases.snapshot())) {
+            total += finding.totalExecutions();
+        }
+
+        return total;
+    }
+
+    private static Finding only() {
+        List<Finding> findings = Ledger.findings();
+        assertEquals(1, findings.size(), "expected one template, got " + findings.size());
+        return findings.getFirst();
+    }
+
     @BeforeEach
     void reset() {
         Ledger.reset();
@@ -30,16 +47,21 @@ class ConcurrencyAdversarialIT {
 
     @Test
     void twoThreadsClosingTheSameConnectionRecordOneLease() throws Exception {
-        java.util.concurrent.atomic.AtomicReference<Throwable> surprise = new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.concurrent.atomic.AtomicReference<Throwable> surprise =
+                new java.util.concurrent.atomic.AtomicReference<>();
         int rounds = 400;
+
         for (int round = 0; round < rounds; round++) {
             Connection connection = FakeDriver.pooled();
             PreparedStatement statement = connection.prepareStatement(SQL);
+
             for (int query = 0; query < 4; query++) {
                 statement.executeQuery();
             }
+
             CountDownLatch start = new CountDownLatch(1);
             CountDownLatch done = new CountDownLatch(2);
+
             for (int closer = 0; closer < 2; closer++) {
                 new Thread(() -> {
                     try {
@@ -53,26 +75,37 @@ class ConcurrencyAdversarialIT {
                     }
                 }).start();
             }
+
             start.countDown();
             assertTrue(done.await(30, TimeUnit.SECONDS), "closers did not finish");
         }
-        assertEquals(rounds, Ledger.leases(),
-                "a connection closed by two threads at once is still one lease");
+
+        assertEquals(
+                rounds, Ledger.leases(),
+                "a connection closed by two threads at once is still one lease"
+        );
+
         Finding finding = only();
+
         assertEquals(rounds, finding.leases());
+
         assertEquals(4L * rounds, finding.totalExecutions(), "no lease was counted twice");
     }
 
     @Test
     void executingWhileAnotherThreadClosesNeverInventsExecutions() throws Exception {
-        java.util.concurrent.atomic.AtomicReference<Throwable> surprise = new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.concurrent.atomic.AtomicReference<Throwable> surprise =
+                new java.util.concurrent.atomic.AtomicReference<>();
+
         int rounds = 300;
         int queries = 20;
+
         for (int round = 0; round < rounds; round++) {
             Connection connection = FakeDriver.pooled();
             PreparedStatement statement = connection.prepareStatement(SQL);
             CountDownLatch start = new CountDownLatch(1);
             CountDownLatch done = new CountDownLatch(2);
+
             new Thread(() -> {
                 try {
                     start.await();
@@ -84,6 +117,7 @@ class ConcurrencyAdversarialIT {
                     done.countDown();
                 }
             }).start();
+
             new Thread(() -> {
                 try {
                     start.await();
@@ -93,27 +127,22 @@ class ConcurrencyAdversarialIT {
                     done.countDown();
                 }
             }).start();
+
             start.countDown();
             assertTrue(done.await(30, TimeUnit.SECONDS), "workers did not finish");
             connection.close();
         }
-        assertNull(surprise.get(), () -> "a worker hit something other than a SQLException: " + surprise.get());
+
+        assertNull(
+                surprise.get(),
+                () -> "a worker hit something other than a SQLException: " + surprise.get()
+        );
+
         long observed = total();
-        assertEquals(Db.count(SQL), observed,
-                "echojar must account for exactly what the driver ran, even while a close races");
-    }
 
-    private static long total() {
-        long total = 0;
-        for (Finding finding : Ledger.findings(OpenLeases.snapshot())) {
-            total += finding.totalExecutions();
-        }
-        return total;
-    }
-
-    private static Finding only() {
-        List<Finding> findings = Ledger.findings();
-        assertEquals(1, findings.size(), "expected one template, got " + findings.size());
-        return findings.get(0);
+        assertEquals(
+                Db.count(SQL), observed,
+                "echojar must account for exactly what the driver ran, even while a close races"
+        );
     }
 }

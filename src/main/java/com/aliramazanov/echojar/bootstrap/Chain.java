@@ -1,6 +1,7 @@
 package com.aliramazanov.echojar.bootstrap;
 
 import com.aliramazanov.echojar.bootstrap.watch.Diagnostics;
+import org.jetbrains.annotations.Nullable;
 
 public final class Chain {
 
@@ -45,7 +46,7 @@ public final class Chain {
         }
     }
 
-    public static Object executeEnter(Object statement) {
+    public static @Nullable Object executeEnter(Object statement) {
         try {
             Frame frame = FRAMES.get();
             frame.push(statement);

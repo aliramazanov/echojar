@@ -1,5 +1,8 @@
 package com.aliramazanov.echojar.bootstrap.findings;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -33,7 +36,8 @@ public final class OpenLeases {
         }
     }
 
-    public static List<Lease> snapshot() {
+    @Contract(value = " -> new", pure = true)
+    public static @NotNull List<Lease> snapshot() {
         return new ArrayList<>(OPEN);
     }
 

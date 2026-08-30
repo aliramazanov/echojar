@@ -44,6 +44,7 @@ public final class EchoJarAgent {
 
     private static void injectBootstrap(Instrumentation instrumentation) throws IOException {
         Path jar = Files.createTempFile("echojar-bootstrap", ".jar");
+
         try (InputStream source = EchoJarAgent.class.getResourceAsStream(BOOTSTRAP_RESOURCE)) {
             if (source == null) {
                 throw new IOException(BOOTSTRAP_RESOURCE + " is missing from the agent jar");

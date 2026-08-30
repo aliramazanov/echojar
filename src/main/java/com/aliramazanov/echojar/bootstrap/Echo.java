@@ -4,6 +4,7 @@ import com.aliramazanov.echojar.bootstrap.findings.Lease;
 import com.aliramazanov.echojar.bootstrap.findings.OpenLeases;
 import com.aliramazanov.echojar.bootstrap.findings.SqlTemplate;
 import com.aliramazanov.echojar.bootstrap.watch.Diagnostics;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -232,7 +233,7 @@ public final class Echo {
         }
     }
 
-    private static void clearBatchSql(StatementCarrier carrier) {
+    private static void clearBatchSql(@NotNull StatementCarrier carrier) {
         List<String> batch = carrier.echojarBatchSql();
         if (batch != null) {
             batch.clear();
@@ -308,9 +309,11 @@ public final class Echo {
         }
 
         Lease lease = carrier.echojarLease();
+
         if (lease == null) {
             synchronized (carrier) {
                 lease = carrier.echojarLease();
+
                 if (lease == null) {
                     lease = new Lease();
                     carrier.echojarLease(lease);

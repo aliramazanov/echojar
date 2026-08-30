@@ -11,6 +11,7 @@ import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
+import org.jetbrains.annotations.NotNull;
 
 final class RequestInstrumentation {
 
@@ -20,7 +21,7 @@ final class RequestInstrumentation {
     private RequestInstrumentation() {
     }
 
-    static AgentBuilder apply(AgentBuilder agent, EchoConfig config) {
+    static AgentBuilder apply(AgentBuilder agent, @NotNull EchoConfig config) {
         if (!config.units()) {
             return agent;
         }
@@ -38,8 +39,8 @@ final class RequestInstrumentation {
         return built;
     }
 
-    private static AgentBuilder boundary(
-            AgentBuilder agent,
+    private static @NotNull AgentBuilder boundary(
+            @NotNull AgentBuilder agent,
             String iface,
             EchoConfig config,
             String method,
@@ -51,9 +52,9 @@ final class RequestInstrumentation {
                         .on(named(method).and(takesArguments(arity)).and(isPublic()))));
     }
 
-    private static ElementMatcher.Junction<TypeDescription> declares(
+    private static ElementMatcher.@NotNull Junction<TypeDescription> declares(
             String iface,
-            EchoConfig config
+            @NotNull EchoConfig config
     ) {
         return hasSuperType(named(iface)).and(not(isInterface())).and(not(config.ignoredTypes()));
     }

@@ -6,6 +6,7 @@ import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.utility.JavaModule;
+import org.jetbrains.annotations.NotNull;
 
 final class TransformJournal extends AgentBuilder.Listener.Adapter {
 
@@ -21,11 +22,11 @@ final class TransformJournal extends AgentBuilder.Listener.Adapter {
 
     @Override
     public void onTransformation(
-            TypeDescription type,
+            @NotNull TypeDescription type,
             ClassLoader loader,
             JavaModule module,
             boolean loaded,
-            DynamicType dynamicType
+            @NotNull DynamicType dynamicType
     ) {
         Diagnostics.transformed();
         Journal.debug("transformed " + type.getName());
@@ -33,11 +34,11 @@ final class TransformJournal extends AgentBuilder.Listener.Adapter {
 
     @Override
     public void onError(
-            String name,
+            @NotNull String name,
             ClassLoader loader,
             JavaModule module,
             boolean loaded,
-            Throwable failure
+            @NotNull Throwable failure
     ) {
         if (unresolvableType(failure)) {
             Diagnostics.unresolvable();

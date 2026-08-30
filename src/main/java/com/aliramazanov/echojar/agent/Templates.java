@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.aliramazanov.echojar.bootstrap.findings.SqlTemplate;
+import org.jetbrains.annotations.NotNull;
 
 final class Templates {
 
@@ -32,7 +33,7 @@ final class Templates {
         this.suppressNoise = suppressNoise;
     }
 
-    static String normalize(String sql) {
+    static @NotNull String normalize(@NotNull String sql) {
         StringBuilder out = new StringBuilder(sql.length());
         int i = 0;
         int length = sql.length();
@@ -93,7 +94,7 @@ final class Templates {
         return collapseInLists(out.toString().trim());
     }
 
-    private static char previous(StringBuilder out) {
+    private static char previous(@NotNull StringBuilder out) {
         return out.isEmpty() ? ' ' : out.charAt(out.length() - 1);
     }
 
@@ -101,7 +102,7 @@ final class Templates {
         return Character.isLetterOrDigit(c) || c == '_' || c == '$' || c == '.';
     }
 
-    private static int skipQuoted(String sql, int start, char quote) {
+    private static int skipQuoted(@NotNull String sql, int start, char quote) {
         int i = start + 1;
 
         while (i < sql.length()) {
@@ -126,7 +127,7 @@ final class Templates {
         return sql.length();
     }
 
-    private static int skipNumber(String sql, int start) {
+    private static int skipNumber(@NotNull String sql, int start) {
         int length = sql.length();
 
         if (sql.charAt(start) == '0' && start + 1 < length &&
@@ -169,10 +170,11 @@ final class Templates {
         return Character.isDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
     }
 
-    private static String collapseInLists(String sql) {
+    private static @NotNull String collapseInLists(@NotNull String sql) {
         StringBuilder out = null;
         int copied = 0;
         int i = 0;
+
         int length = sql.length();
 
         while (i < length) {
@@ -210,8 +212,9 @@ final class Templates {
         return out.append(sql, copied, length).toString();
     }
 
-    private static boolean isInKeyword(String sql, int i) {
+    private static boolean isInKeyword(@NotNull String sql, int i) {
         char first = sql.charAt(i);
+
         if (first != 'i' && first != 'I') {
             return false;
         }
@@ -233,10 +236,11 @@ final class Templates {
         return i + 2 >= sql.length() || !isIdentifierPart(sql.charAt(i + 2));
     }
 
-    private static int scanPlaceholders(String sql, int open) {
+    private static int scanPlaceholders(@NotNull String sql, int open) {
         int length = sql.length();
         int i = open + 1;
         int placeholders = 0;
+
         while (i < length) {
             while (i < length && sql.charAt(i) == ' ') {
                 i++;
@@ -271,8 +275,9 @@ final class Templates {
         return -1;
     }
 
-    SqlTemplate of(String rawSql) {
+    SqlTemplate of(@NotNull String rawSql) {
         boolean keyable = rawSql.length() <= LONGEST_KEY;
+
         if (keyable) {
             SqlTemplate cached = byRawSql.get(rawSql);
             if (cached != null) {
@@ -289,12 +294,13 @@ final class Templates {
         return template;
     }
 
-    private SqlTemplate resolve(String text) {
+    private SqlTemplate resolve(@NotNull String text) {
         if (text.isEmpty()) {
             return BLANK;
         }
 
         SqlTemplate known = byTemplate.get(text);
+
         if (known != null) {
             return known;
         }

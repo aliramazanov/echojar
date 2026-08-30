@@ -1,5 +1,7 @@
 package com.aliramazanov.echojar.bootstrap.watch;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.PrintStream;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -36,7 +38,7 @@ public final class Journal {
         write(Level.DEBUG, message);
     }
 
-    private static void write(Level requested, String message) {
+    private static void write(@NotNull Level requested, String message) {
         if (requested.ordinal() > level.ordinal() || level == Level.OFF) {
             return;
         }

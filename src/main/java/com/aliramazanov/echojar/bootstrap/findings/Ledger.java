@@ -1,5 +1,8 @@
 package com.aliramazanov.echojar.bootstrap.findings;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -13,11 +16,11 @@ public final class Ledger {
     private Ledger() {
     }
 
-    public static void record(Lease lease) {
+    public static void record(@NotNull Lease lease) {
         record(lease.echoes());
     }
 
-    public static void record(List<Echoes> closing) {
+    public static void record(@NotNull List<Echoes> closing) {
         synchronized (FINDINGS) {
             leases++;
 
@@ -27,11 +30,13 @@ public final class Ledger {
         }
     }
 
-    public static List<Finding> findings() {
+    @Contract(" -> new")
+    public static @NotNull List<Finding> findings() {
         return findings(List.of());
     }
 
-    public static List<Finding> findings(List<Lease> pending) {
+    @Contract("_ -> new")
+    public static @NotNull List<Finding> findings(@NotNull List<Lease> pending) {
         synchronized (FINDINGS) {
             Map<SqlTemplate, Finding> view = new LinkedHashMap<>();
             FINDINGS.forEach((template, finding) -> view.put(template, finding.copy()));

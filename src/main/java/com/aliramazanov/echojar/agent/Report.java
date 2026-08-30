@@ -13,6 +13,8 @@ import com.aliramazanov.echojar.bootstrap.findings.Lease;
 import com.aliramazanov.echojar.bootstrap.findings.Ledger;
 import com.aliramazanov.echojar.bootstrap.findings.OpenLeases;
 import com.aliramazanov.echojar.bootstrap.watch.Diagnostics;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 
 final class Report {
 
@@ -40,7 +42,8 @@ final class Report {
         this.staleAfter = staleAfterMillis;
     }
 
-    private static String describe(long millis) {
+    @Contract(pure = true)
+    private static @NotNull String describe(long millis) {
         long seconds = millis / 1000;
 
         if (seconds < 120) {
@@ -52,7 +55,8 @@ final class Report {
         return minutes < 120 ? minutes + " minutes" : (minutes / 60) + " hours";
     }
 
-    private static Unit unit(View view) {
+    @Contract("_ -> new")
+    private static @NotNull Unit unit(View view) {
         long requests = Diagnostics.snapshot().units();
 
         if (requests == 0) {
@@ -70,7 +74,7 @@ final class Report {
         return requests * 2 >= total;
     }
 
-    private static int sites(List<Finding> echoes) {
+    private static int sites(@NotNull List<Finding> echoes) {
         Set<CallSite> distinct = new HashSet<>();
 
         for (Finding finding : echoes) {
@@ -82,7 +86,8 @@ final class Report {
         return distinct.size();
     }
 
-    private static String plural(long count, String one, String many) {
+    @Contract(pure = true)
+    private static @NotNull String plural(long count, String one, String many) {
         return count + " " + (count == 1 ? one : many);
     }
 
@@ -90,7 +95,7 @@ final class Report {
         print(out, 0);
     }
 
-    void print(PrintStream out, int override) {
+    void print(@NotNull PrintStream out, int override) {
         int effective = override > 0 ? override : threshold;
         View view = view();
         Unit named = unit(view);
@@ -160,7 +165,8 @@ final class Report {
         caveats(out, view);
     }
 
-    private View view() {
+    @Contract(" -> new")
+    private @NotNull View view() {
         List<Lease> pending = OpenLeases.snapshot();
         detector.resolve(pending);
         return new View(Ledger.findings(pending), Ledger.leases(pending.size()));
@@ -168,7 +174,7 @@ final class Report {
 
     private void spread(
             PrintStream out,
-            View view,
+            @NotNull View view,
             int effective,
             boolean requests,
             String unit,
@@ -217,7 +223,7 @@ final class Report {
         }
     }
 
-    private void age(PrintStream out, Finding finding) {
+    private void age(PrintStream out, @NotNull Finding finding) {
         long idle = System.currentTimeMillis() - finding.lastSeen();
 
         if (idle < staleAfter) {
@@ -248,7 +254,7 @@ final class Report {
         health(out, view);
     }
 
-    private void unbounded(PrintStream out, View view) {
+    private void unbounded(PrintStream out, @NotNull View view) {
         long requests = Diagnostics.snapshot().units();
         long total = view.units();
 

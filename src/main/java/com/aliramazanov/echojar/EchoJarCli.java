@@ -7,13 +7,14 @@ import java.util.List;
 
 import com.sun.tools.attach.VirtualMachine;
 import com.sun.tools.attach.VirtualMachineDescriptor;
+import org.jetbrains.annotations.NotNull;
 
 public final class EchoJarCli {
 
     private EchoJarCli() {
     }
 
-    static void main(String[] arguments) {
+    static void main(String @NotNull [] arguments) {
         if (arguments.length == 0) {
             usage();
             System.exit(2);
@@ -33,22 +34,24 @@ public final class EchoJarCli {
             }
         } catch (Exception failure) {
             String reason = failure.getMessage();
-            System.err.println(
-                    "echojar: " + (reason == null ? failure.getClass().getSimpleName() : reason));
+            String failureClassName = failure.getClass().getSimpleName();
+
+            System.err.println("echojar: " + (reason == null ? failureClassName : reason));
             System.exit(1);
         }
     }
 
-    private static void attach(String[] arguments) throws Exception {
+    private static void attach(String @NotNull [] arguments) throws Exception {
         if (arguments.length < 2) {
             usage();
             System.exit(2);
         }
 
         String pid = arguments[1];
-        String options = arguments.length > 2 ? arguments[2] : "";
-        Path jar = agentJar();
         VirtualMachine machine = VirtualMachine.attach(pid);
+        Path jar = agentJar();
+
+        String options = arguments.length > 2 ? arguments[2] : "";
 
         try {
             machine.loadAgent(jar.toString(), options);
@@ -59,14 +62,16 @@ public final class EchoJarCli {
         System.err.printf("echojar: attached to %s%n", pid);
     }
 
-    private static void dump(String[] arguments) throws Exception {
+    private static void dump(String @NotNull [] arguments) throws Exception {
         if (arguments.length < 2) {
             usage();
             System.exit(2);
         }
 
         String pid = arguments[1];
+
         StringBuilder options = new StringBuilder("command=dump");
+
         boolean toFile = arguments.length > 2 && !arguments[2].isBlank();
 
         if (toFile) {
@@ -125,7 +130,7 @@ public final class EchoJarCli {
         }
     }
 
-    private static Path agentJar() throws Exception {
+    private static @NotNull Path agentJar() throws Exception {
         URI location = EchoJarCli.class.getProtectionDomain().getCodeSource().getLocation().toURI();
         Path jar = Paths.get(location).toAbsolutePath();
 

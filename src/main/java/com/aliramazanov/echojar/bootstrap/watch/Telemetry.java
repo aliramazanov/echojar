@@ -31,6 +31,7 @@ public final class Telemetry {
                     new DiagnosticsBean(),
                     new ObjectName("com.aliramazanov.echojar:type=Diagnostics")
             );
+
             Journal.info("diagnostics bean registered at com.aliramazanov" +
                     ".echojar:type=Diagnostics");
         } catch (JMException | RuntimeException | Error failure) {

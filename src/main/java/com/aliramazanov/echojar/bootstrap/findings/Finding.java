@@ -1,5 +1,8 @@
 package com.aliramazanov.echojar.bootstrap.findings;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+
 public final class Finding {
 
     private final SqlTemplate template;
@@ -13,7 +16,8 @@ public final class Finding {
         this.template = template;
     }
 
-    private Finding(Finding other) {
+    @Contract(pure = true)
+    private Finding(@NotNull Finding other) {
         this.template = other.template;
         this.peakPerLease = other.peakPerLease;
         this.totalExecutions = other.totalExecutions;
@@ -22,7 +26,8 @@ public final class Finding {
         this.lastSeen = other.lastSeen;
     }
 
-    Finding copy() {
+    @Contract(value = " -> new", pure = true)
+    @NotNull Finding copy() {
         return new Finding(this);
     }
 
@@ -50,8 +55,9 @@ public final class Finding {
         return lastSeen;
     }
 
-    void merge(Echoes echoes) {
+    void merge(@NotNull Echoes echoes) {
         lastSeen = System.currentTimeMillis();
+
         int executions = echoes.executions();
 
         if (executions > peakPerLease) {

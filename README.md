@@ -1,16 +1,14 @@
 # echojar
 
-[![ci](https://github.com/aliramazanov/echojar/actions/workflows/ci.yml/badge.svg)](https://github.com/aliramazanov/echojar/actions/workflows/ci.yml)
-
 **How many queries did that request really make?** Attach to a running JVM and hear the echo.
 
-echojar is a Java agent. It attaches to an application you did not modify, listens at the
+echojar is a Java agent. It attaches to an application, listens at the
 JDBC layer, and reports where one logical operation turned into hundreds of physical
 queries, with the line of code that caused it.
 
 Verified against PostgreSQL, MySQL, MariaDB, SQL Server, CockroachDB, H2, HSQLDB, Derby and
-SQLite; behind HikariCP, DBCP2, c3p0, Agroal and the Tomcat JDBC pool; through Hibernate,
-EclipseLink, MyBatis, jOOQ, JDBI, Spring JDBC and plain JDBC; on the classpath and with the
+SQLite, behind HikariCP, DBCP2, c3p0, Agroal and the Tomcat JDBC pool, through Hibernate,
+EclipseLink, MyBatis, jOOQ, JDBI, Spring JDBC and plain JDBC on the classpath and with the
 driver on the module path.
 
 ```console
@@ -23,7 +21,7 @@ echojar: 1 echo in 1 call site
     OrderService.summarise(OrderService.java:19)
 ```
 
-N+1 queries do not fail. They pass every test, look fine on a laptop with forty rows, and
+N+1 queries do not fail. They pass every test, look fine on a display with forty rows, and
 only surface as latency once real data arrives. The ORM is doing exactly what it was told,
 so nothing in the code looks wrong. The evidence exists only at runtime.
 
@@ -78,7 +76,7 @@ Comma separated, either on the `-javaagent` argument or as `-Dechojar.*` system 
 
 An agent that swallows every exception so it cannot disturb its host is an agent that can
 fail silently, so echojar counts everything it discards. The report ends with a health block
-whenever anything was suppressed, naming the site and the first failure seen there;
+whenever anything was suppressed, naming the site and the first failure seen there and
 `diagnostics=true` prints it on clean runs too. The same counters are live over JMX at
 `com.aliramazanov.echojar:type=Diagnostics`, and as two JFR events, `echojar.Echo` when a
 statement crosses the threshold and `echojar.Health` every ten seconds.
@@ -86,8 +84,8 @@ statement crosses the threshold and `echojar.Health` every ten seconds.
 ## What it does not do
 
 - It does not fix anything. It tells you where to look and what caused it.
-- It cannot tell a deliberate loop of queries from an accidental one. A bulk insert loop is
-  reported the same way a lazy collection is.
+- It cannot tell a deliberate loop of queries from an accidental one.
+- A bulk insert loop is reported the same way a lazy collection is.
 - The unit of work is the request where echojar finds one, and the connection lease
   otherwise. A servlet or filter marks the request, outermost wins. Applications that are not
   servlet based can mark their own with `Units.enter()` and `Units.exit()`.
