@@ -50,7 +50,9 @@
     <javadoc.version>3.11.2</javadoc.version>
     <source.version>3.3.1</source.version>
     <gpg.version>3.2.7</gpg.version>
-    <central.version>0.7.0</central.version>
+    <central.version>0.9.0</central.version>
+    <enforcer.version>3.5.0</enforcer.version>
+    <central.autoPublish>false</central.autoPublish>
     <bootstrap.package>com/aliramazanov/echojar/bootstrap</bootstrap.package>
   </properties>
 
@@ -121,6 +123,7 @@
             </goals>
             <configuration>
               <classifier>bootstrap</classifier>
+              <attach>false</attach>
               <outputDirectory>${project.build.outputDirectory}/com/aliramazanov/echojar</outputDirectory>
               <forceCreation>true</forceCreation>
               <archive>
@@ -250,6 +253,36 @@
         <plugins>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-enforcer-plugin</artifactId>
+            <version>${enforcer.version}</version>
+            <executions>
+              <execution>
+                <id>enforce-release-rules</id>
+                <phase>validate</phase>
+                <goals>
+                  <goal>enforce</goal>
+                </goals>
+                <configuration>
+                  <rules>
+                    <requireReleaseDeps>
+                      <message>a release cannot depend on a snapshot</message>
+                    </requireReleaseDeps>
+                    <requireReleaseVersion>
+                      <message>the project version itself must not be a snapshot</message>
+                    </requireReleaseVersion>
+                    <requireJavaVersion>
+                      <version>[25,)</version>
+                    </requireJavaVersion>
+                    <requireMavenVersion>
+                      <version>[3.9,)</version>
+                    </requireMavenVersion>
+                  </rules>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-source-plugin</artifactId>
             <executions>
               <execution>
@@ -299,7 +332,9 @@
             <extensions>true</extensions>
             <configuration>
               <publishingServerId>central</publishingServerId>
-              <autoPublish>false</autoPublish>
+              <autoPublish>${central.autoPublish}</autoPublish>
+              <waitUntil>validated</waitUntil>
+              <deploymentName>echojar ${project.version}</deploymentName>
             </configuration>
           </plugin>
         </plugins>

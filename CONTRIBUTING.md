@@ -116,6 +116,19 @@ The namespace is `io.github.aliramazanov`, which Central hands out for free to a
 after asking you to create a public repository with a name it chooses. A namespace under `com.`
 would instead need you to own the matching domain and prove it with a DNS record.
 
+Four things go to Central, which are the agent jar, its sources, its javadoc and the pom. The
+bootstrap jar is deliberately left out, because it already sits inside the agent jar and its
+classes have to be loaded by the bootstrap loader rather than found on a classpath.
+
+A deployment does not go live on its own. It is uploaded, Central validates it, and then it waits
+for you in the portal until you publish it. Setting `central.autoPublish` to true removes that
+step once you trust the pipeline.
+
+The release profile also refuses to build in three cases, which are a version that is still a
+snapshot, a dependency that is still a snapshot, and a JDK older than 25. Those are the mistakes
+that cannot be taken back once they reach Central, since a published version can never be
+replaced.
+
 ## Reporting a bug
 
 Include the agent's health block, which is described in [how.md](docs/how.md). It says what the
