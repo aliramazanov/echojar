@@ -51,7 +51,7 @@ The long explanations belong in the docs folder. what.md is the problem, why.md 
 behind the design, and how.md is the machinery, so a class Javadoc can stay short and lean on
 those rather than repeating them.
 
-In prose, plain words and no semicolons and no em dashes.
+In prose, plain words.
 
 ## Things that will break the agent
 
