@@ -3,11 +3,13 @@ package com.aliramazanov.echojar;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.aliramazanov.echojar.bootstrap.watch.DiagnosticsMXBean;
 import com.aliramazanov.echojar.fake.FakeDriver;
 
 import java.lang.management.ManagementFactory;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import javax.management.JMX;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
@@ -75,5 +77,45 @@ class DiagnosticsBeanIT {
         assertEquals(0, suppressed, "nothing should have been suppressed in this run");
         assertTrue(healthy);
         assertEquals(0, detail.length);
+    }
+
+    @Test
+    void theTypedProxyReadsTheSameNumbersAsTheAttributeNames() throws Exception {
+        MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+        ObjectName name = new ObjectName(NAME);
+
+        DiagnosticsMXBean bean = JMX.newMXBeanProxy(server, name, DiagnosticsMXBean.class);
+
+        try (Connection connection = FakeDriver.pooled()) {
+            new OrderService(connection).summarise(4);
+        }
+
+        assertEquals(
+                (Long) server.getAttribute(name, "Executions"),
+                bean.getExecutions(),
+                "a getter and its attribute name must reach the same counter"
+        );
+
+        assertEquals((Long) server.getAttribute(name, "LeasesClosed"), bean.getLeasesClosed());
+        assertEquals((Long) server.getAttribute(name, "LeasesOpen"), bean.getLeasesOpen());
+        assertEquals(
+                (Long) server.getAttribute(name, "StatementsTemplated"),
+                bean.getStatementsTemplated()
+        );
+        assertEquals(
+                (Long) server.getAttribute(name, "TypesTransformed"),
+                bean.getTypesTransformed()
+        );
+        assertEquals((Long) server.getAttribute(name, "StackWalks"), bean.getStackWalks());
+        assertEquals(
+                (Long) server.getAttribute(name, "SuppressedFailures"),
+                bean.getSuppressedFailures()
+        );
+
+        assertEquals(server.getAttribute(name, "Healthy"), bean.isHealthy());
+        assertEquals(
+                ((String[]) server.getAttribute(name, "SuppressedDetail")).length,
+                bean.getSuppressedDetail().length
+        );
     }
 }

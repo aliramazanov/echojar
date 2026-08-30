@@ -51,32 +51,33 @@ class ConcurrencyAdversarialIT {
         int rounds = 400;
 
         for (int round = 0; round < rounds; round++) {
-            Connection connection = FakeDriver.pooled();
-            PreparedStatement statement = connection.prepareStatement(SQL);
+            try (Connection connection = FakeDriver.pooled()) {
+                PreparedStatement statement = connection.prepareStatement(SQL);
 
-            for (int query = 0; query < 4; query++) {
-                statement.executeQuery();
+                for (int query = 0; query < 4; query++) {
+                    statement.executeQuery();
+                }
+
+                CountDownLatch start = new CountDownLatch(1);
+                CountDownLatch done = new CountDownLatch(2);
+
+                for (int closer = 0; closer < 2; closer++) {
+                    new Thread(() -> {
+                        try {
+                            start.await();
+                            connection.close();
+                        } catch (java.sql.SQLException expected) {
+                        } catch (Throwable unexpected) {
+                            surprise.compareAndSet(null, unexpected);
+                        } finally {
+                            done.countDown();
+                        }
+                    }).start();
+                }
+
+                start.countDown();
+                assertTrue(done.await(30, TimeUnit.SECONDS), "closers did not finish");
             }
-
-            CountDownLatch start = new CountDownLatch(1);
-            CountDownLatch done = new CountDownLatch(2);
-
-            for (int closer = 0; closer < 2; closer++) {
-                new Thread(() -> {
-                    try {
-                        start.await();
-                        connection.close();
-                    } catch (java.sql.SQLException expected) {
-                    } catch (Throwable unexpected) {
-                        surprise.compareAndSet(null, unexpected);
-                    } finally {
-                        done.countDown();
-                    }
-                }).start();
-            }
-
-            start.countDown();
-            assertTrue(done.await(30, TimeUnit.SECONDS), "closers did not finish");
         }
 
         assertEquals(
@@ -100,36 +101,36 @@ class ConcurrencyAdversarialIT {
         int queries = 20;
 
         for (int round = 0; round < rounds; round++) {
-            Connection connection = FakeDriver.pooled();
-            PreparedStatement statement = connection.prepareStatement(SQL);
-            CountDownLatch start = new CountDownLatch(1);
-            CountDownLatch done = new CountDownLatch(2);
+            try (Connection connection = FakeDriver.pooled()) {
+                PreparedStatement statement = connection.prepareStatement(SQL);
+                CountDownLatch start = new CountDownLatch(1);
+                CountDownLatch done = new CountDownLatch(2);
 
-            new Thread(() -> {
-                try {
-                    start.await();
-                    for (int query = 0; query < queries; query++) {
-                        statement.executeQuery();
+                new Thread(() -> {
+                    try {
+                        start.await();
+                        for (int query = 0; query < queries; query++) {
+                            statement.executeQuery();
+                        }
+                    } catch (Exception ignored) {
+                    } finally {
+                        done.countDown();
                     }
-                } catch (Exception ignored) {
-                } finally {
-                    done.countDown();
-                }
-            }).start();
+                }).start();
 
-            new Thread(() -> {
-                try {
-                    start.await();
-                    connection.close();
-                } catch (Exception ignored) {
-                } finally {
-                    done.countDown();
-                }
-            }).start();
+                new Thread(() -> {
+                    try {
+                        start.await();
+                        connection.close();
+                    } catch (Exception ignored) {
+                    } finally {
+                        done.countDown();
+                    }
+                }).start();
 
-            start.countDown();
-            assertTrue(done.await(30, TimeUnit.SECONDS), "workers did not finish");
-            connection.close();
+                start.countDown();
+                assertTrue(done.await(30, TimeUnit.SECONDS), "workers did not finish");
+            }
         }
 
         assertNull(

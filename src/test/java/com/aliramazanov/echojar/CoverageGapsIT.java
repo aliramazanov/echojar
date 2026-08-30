@@ -73,14 +73,15 @@ class CoverageGapsIT {
     @Test
     void aStatementUsedAfterItsConnectionClosedStartsAFreshLease() throws SQLException {
         String sql = "SELECT * FROM orphan_item WHERE order_id = ?";
-        Connection connection = FakeDriver.pooled();
-        PreparedStatement statement = connection.prepareStatement(sql);
+        PreparedStatement statement;
 
-        for (int query = 0; query < 6; query++) {
-            statement.executeQuery();
+        try (Connection connection = FakeDriver.pooled()) {
+            statement = connection.prepareStatement(sql);
+
+            for (int query = 0; query < 6; query++) {
+                statement.executeQuery();
+            }
         }
-
-        connection.close();
 
         for (int query = 0; query < 3; query++) {
             statement.executeQuery();

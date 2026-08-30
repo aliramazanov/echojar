@@ -9,6 +9,21 @@ import com.sun.tools.attach.VirtualMachine;
 import com.sun.tools.attach.VirtualMachineDescriptor;
 import org.jetbrains.annotations.NotNull;
 
+/**
+ * The command line tool. Adding a {@code -javaagent} flag means restarting the application, and
+ * echojar is meant for the process that is already running and cannot be restarted, so it needs
+ * another way in, and that way is the JVM's attach API.
+ *
+ * <p>It ships inside the agent's own jar because attaching means giving the target a path to a
+ * jar, and one file can find where it was loaded from and pass itself, while two files would mean
+ * the user keeps both and has to pass the right one.
+ *
+ * <p>attach, dump and reset are the same attach underneath and only the options differ, so an
+ * empty string lets the agent install itself, while {@code command=dump} and
+ * {@code command=reset} are read by the installer and answered before anything is installed,
+ * which is how a running JVM is read and cleared without echojar opening a socket. list does not
+ * attach to anything, it only shows which JVMs you could attach to.
+ */
 public final class EchoJarCli {
 
     private EchoJarCli() {
@@ -34,9 +49,8 @@ public final class EchoJarCli {
             }
         } catch (Exception failure) {
             String reason = failure.getMessage();
-            String failureClassName = failure.getClass().getSimpleName();
-
-            System.err.println("echojar: " + (reason == null ? failureClassName : reason));
+            String failureClass = failure.getClass().getSimpleName();
+            System.err.println("echojar: " + (reason == null ? failureClass : reason));
             System.exit(1);
         }
     }
@@ -48,16 +62,8 @@ public final class EchoJarCli {
         }
 
         String pid = arguments[1];
-        VirtualMachine machine = VirtualMachine.attach(pid);
-        Path jar = agentJar();
 
-        String options = arguments.length > 2 ? arguments[2] : "";
-
-        try {
-            machine.loadAgent(jar.toString(), options);
-        } finally {
-            machine.detach();
-        }
+        load(pid, arguments.length > 2 ? arguments[2] : "");
 
         System.err.printf("echojar: attached to %s%n", pid);
     }
@@ -85,16 +91,9 @@ public final class EchoJarCli {
         load(pid, options.toString());
 
         if (toFile) {
-            System.err.printf(
-                    "echojar: wrote the current findings of %s to %s%n",
-                    pid,
-                    arguments[2]
-            );
+            System.err.printf("echojar: wrote findings from %s to %s%n", pid, arguments[2]);
         } else {
-            System.err.printf(
-                    "echojar: asked %s to print its current findings to its own stderr%n",
-                    pid
-            );
+            System.err.printf("echojar: dumped %s to its own stderr%n", pid);
         }
     }
 
@@ -144,15 +143,14 @@ public final class EchoJarCli {
     private static void usage() {
         System.err.println("""
                 usage:
-                  java -jar echojar.jar attach <pid> [options]   load the agent into a running JVM
-                  java -jar echojar.jar dump <pid> [file] [n]    print what a running agent has found, optionally at threshold n
-                  java -jar echojar.jar reset <pid>              forget everything counted so far
-                  java -jar echojar.jar list                     show attachable JVMs
-                
+                  java -jar echojar.jar attach <pid> [options]  load the agent into a running JVM
+                  java -jar echojar.jar dump <pid> [file] [n]   print findings, at threshold n
+                  java -jar echojar.jar reset <pid>             clear the counters
+                  java -jar echojar.jar list                    show attachable JVMs
+
                 options are comma separated, for example threshold=10,noise=false
-                
-                the target JVM must allow dynamic agent loading. JDK 21 and later print a
-                warning on attach; start the target with -XX:+EnableDynamicAgentLoading to
-                silence it.""");
+
+                the target JVM must allow dynamic agent loading. JDK 21 and later warn on
+                attach, and -XX:+EnableDynamicAgentLoading on the target silences it.""");
     }
 }

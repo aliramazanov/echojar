@@ -140,15 +140,15 @@ class AdversarialIT {
 
     @Test
     void closingAConnectionTwiceRecordsOneLease() throws SQLException {
-        Connection connection = FakeDriver.pooled();
-        PreparedStatement statement = connection.prepareStatement(SQL);
+        try (Connection connection = FakeDriver.pooled()) {
+            PreparedStatement statement = connection.prepareStatement(SQL);
 
-        for (int query = 0; query < 6; query++) {
-            statement.executeQuery();
+            for (int query = 0; query < 6; query++) {
+                statement.executeQuery();
+            }
+
         }
 
-        connection.close();
-        connection.close();
         assertEquals(1, Ledger.leases(), "a double close must not record the lease twice");
         assertEquals(6, only().peakPerLease());
     }
@@ -168,6 +168,7 @@ class AdversarialIT {
                 new Thread(() -> {
                     try {
                         start.await();
+
                         for (int query = 0; query < perThread; query++) {
                             statement.executeQuery();
                         }
@@ -212,33 +213,35 @@ class AdversarialIT {
 
     @Test
     void aConnectionThatIsNeverClosedIsStillReported() throws SQLException {
-        Connection connection = FakeDriver.pooled();
-        PreparedStatement statement = connection.prepareStatement(SQL);
+        try (Connection connection = FakeDriver.pooled()) {
+            PreparedStatement statement = connection.prepareStatement(SQL);
 
-        for (int query = 0; query < 20; query++) {
-            statement.executeQuery();
+            for (int query = 0; query < 20; query++) {
+                statement.executeQuery();
+            }
+
+            assertEquals(List.of(), Ledger.findings(), "the ledger holds finished leases only");
+            String report = report();
+
+            assertTrue(
+                    report.contains("20 executions in one connection lease"),
+                    "a pool that never closes the driver's own connection would otherwise be "
+                            + "invisible:\n" + report
+            );
         }
-
-        assertEquals(List.of(), Ledger.findings(), "the ledger holds finished leases only");
-        String report = report();
-
-        assertTrue(
-                report.contains("20 executions in one connection lease"),
-                "a pool that never closes the driver's own connection would otherwise be invisible:\n" + report
-        );
     }
 
     @Test
     void anOpenLeaseIsNotCountedTwiceWhenItFinallyCloses() throws SQLException {
-        Connection connection = FakeDriver.pooled();
-        PreparedStatement statement = connection.prepareStatement(SQL);
+        try (Connection connection = FakeDriver.pooled()) {
+            PreparedStatement statement = connection.prepareStatement(SQL);
 
-        for (int query = 0; query < 20; query++) {
-            statement.executeQuery();
+            for (int query = 0; query < 20; query++) {
+                statement.executeQuery();
+            }
+
+            assertTrue(report().contains("20 executions in one connection lease"));
         }
-
-        assertTrue(report().contains("20 executions in one connection lease"));
-        connection.close();
 
         Finding finding = only();
         assertEquals(20, finding.peakPerLease(), "reporting an open lease must not double it");
@@ -254,25 +257,26 @@ class AdversarialIT {
 
     @Test
     void anOpenLeaseKeepsGrowingBetweenReports() throws SQLException {
-        Connection connection = FakeDriver.pooled();
-        PreparedStatement statement = connection.prepareStatement(SQL);
+        try (Connection connection = FakeDriver.pooled()) {
+            PreparedStatement statement = connection.prepareStatement(SQL);
 
-        for (int query = 0; query < 6; query++) {
-            statement.executeQuery();
+            for (int query = 0; query < 6; query++) {
+                statement.executeQuery();
+            }
+
+            assertTrue(report().contains("6 executions in one connection lease"));
+
+            for (int query = 0; query < 5; query++) {
+                statement.executeQuery();
+            }
+
+            String later = report();
+
+            assertTrue(
+                    later.contains("11 executions in one connection lease"),
+                    "the second report shows the lease as it stands now:\n" + later
+            );
         }
-
-        assertTrue(report().contains("6 executions in one connection lease"));
-
-        for (int query = 0; query < 5; query++) {
-            statement.executeQuery();
-        }
-
-        String later = report();
-
-        assertTrue(
-                later.contains("11 executions in one connection lease"),
-                "the second report shows the lease as it stands now:\n" + later
-        );
     }
 
     @Test

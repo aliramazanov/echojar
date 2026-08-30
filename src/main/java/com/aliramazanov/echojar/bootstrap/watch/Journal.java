@@ -16,6 +16,10 @@ public final class Journal {
     private Journal() {
     }
 
+    public static void configure(Level requested, PrintStream sink) {
+        configure(requested, sink, DEFAULT_BUDGET);
+    }
+
     public static void configure(Level requested, PrintStream sink, long lineBudget) {
         level = requested == null ? Level.WARN : requested;
         out = sink == null ? System.err : sink;
@@ -24,6 +28,10 @@ public final class Journal {
 
     public static Level level() {
         return level;
+    }
+
+    public static PrintStream out() {
+        return out;
     }
 
     public static boolean writes(Level requested) {
