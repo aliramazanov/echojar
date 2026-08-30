@@ -83,7 +83,7 @@ class DriverCompatibilityIT {
 
     @BeforeEach
     void reset() {
-        Ledger.reset();
+        AgentState.reset();
     }
 
     @Test

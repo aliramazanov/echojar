@@ -41,8 +41,7 @@ class ConcurrencyAdversarialIT {
 
     @BeforeEach
     void reset() {
-        Ledger.reset();
-        Db.reset();
+        AgentState.reset();
     }
 
     @Test
@@ -140,7 +139,7 @@ class ConcurrencyAdversarialIT {
 
         long observed = total();
         long ran = Db.count(SQL);
-        
+
         assertTrue(
                 observed <= ran,
                 "echojar reported " + observed + " executions but the driver only ran " + ran

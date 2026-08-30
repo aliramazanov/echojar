@@ -42,8 +42,7 @@ class JdbcCountingIT {
 
     @BeforeEach
     void reset() {
-        Ledger.reset();
-        Db.reset();
+        AgentState.reset();
     }
 
     @Test

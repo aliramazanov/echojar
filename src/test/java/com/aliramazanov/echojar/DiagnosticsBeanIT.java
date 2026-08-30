@@ -3,7 +3,6 @@ package com.aliramazanov.echojar;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.aliramazanov.echojar.fake.Db;
 import com.aliramazanov.echojar.fake.FakeDriver;
 
 import java.lang.management.ManagementFactory;
@@ -22,7 +21,7 @@ class DiagnosticsBeanIT {
 
     @BeforeEach
     void reset() {
-        Db.reset();
+        AgentState.reset();
     }
 
     @Test
