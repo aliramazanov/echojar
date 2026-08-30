@@ -25,9 +25,11 @@ public final class EchoEvent extends Event {
 
     public static void record(String sql, int executions, String callSite) {
         EchoEvent event = new EchoEvent();
+
         if (!event.isEnabled()) {
             return;
         }
+
         event.sql = sql;
         event.executions = executions;
         event.callSite = callSite;

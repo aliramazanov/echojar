@@ -13,6 +13,19 @@ public final class Finding {
         this.template = template;
     }
 
+    private Finding(Finding other) {
+        this.template = other.template;
+        this.peakPerLease = other.peakPerLease;
+        this.totalExecutions = other.totalExecutions;
+        this.leases = other.leases;
+        this.site = other.site;
+        this.lastSeen = other.lastSeen;
+    }
+
+    Finding copy() {
+        return new Finding(this);
+    }
+
     public SqlTemplate template() {
         return template;
     }
@@ -40,11 +53,14 @@ public final class Finding {
     void merge(Echoes echoes) {
         lastSeen = System.currentTimeMillis();
         int executions = echoes.executions();
+
         if (executions > peakPerLease) {
             peakPerLease = executions;
         }
+
         totalExecutions += executions;
         leases++;
+
         if (site == null) {
             site = echoes.site();
         }

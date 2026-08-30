@@ -36,7 +36,6 @@ public final class EchoJarAgent {
             }
         } catch (IOException | RuntimeException failure) {
             System.err.println("echojar: could not inject the bootstrap jar, agent disabled");
-            failure.printStackTrace();
             return;
         }
 
@@ -49,6 +48,7 @@ public final class EchoJarAgent {
             if (source == null) {
                 throw new IOException(BOOTSTRAP_RESOURCE + " is missing from the agent jar");
             }
+
             Files.copy(source, jar, StandardCopyOption.REPLACE_EXISTING);
         }
 

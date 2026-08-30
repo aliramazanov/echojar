@@ -23,8 +23,10 @@ final class WeakIdentityMap<V> {
         if (existing != null) {
             return existing;
         }
+
         V created = factory.get();
         V raced = entries.putIfAbsent(new Key(key, stale), created);
+
         return raced != null ? raced : created;
     }
 

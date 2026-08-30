@@ -3,9 +3,9 @@ package com.aliramazanov.echojar.agent;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import org.junit.jupiter.api.Test;
 
 import com.aliramazanov.echojar.bootstrap.findings.SqlTemplate;
-import org.junit.jupiter.api.Test;
 
 class TemplatesTest {
 
@@ -86,5 +86,33 @@ class TemplatesTest {
         assertEquals(false, new Templates(100, false).of("SELECT 1").noise());
         assertEquals(true, new Templates(100, true).of("select nextval('hibernate_sequence')").noise());
         assertEquals(false, new Templates(100, true).of("SELECT * FROM orders WHERE id = 1").noise());
+    }
+
+    @Test
+    void aLongStatementIsNeverHeldAsACacheKey() {
+        Templates templates = new Templates(5_000, true);
+        for (int index = 0; index < 400; index++) {
+            StringBuilder sql = new StringBuilder("SELECT id FROM big WHERE id IN (");
+            for (int term = 0; term < 900; term++) {
+                sql.append(term == 0 ? "" : ",").append(index).append(term);
+            }
+            sql.append(')');
+            SqlTemplate template = templates.of(sql.toString());
+            assertEquals("SELECT id FROM big WHERE id IN (?)", template.text(),
+                    "a long statement must still normalise to the same template");
+        }
+        assertEquals(0, templates.keyed(),
+                "holding large statements as keys is how a bounded cache still eats a heap");
+        assertEquals(1, templates.cached(), "and they all share one template");
+    }
+
+    @Test
+    void anOrdinaryStatementIsStillCached() {
+        Templates templates = new Templates(5_000, true);
+        for (int index = 0; index < 20; index++) {
+            templates.of("SELECT name FROM person WHERE id = " + index);
+        }
+        assertEquals(20, templates.keyed(), "short statements keep their fast path");
+        assertEquals(1, templates.cached());
     }
 }

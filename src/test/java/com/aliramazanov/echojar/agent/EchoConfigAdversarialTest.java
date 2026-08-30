@@ -70,6 +70,7 @@ class EchoConfigAdversarialTest {
             assertTrue(!prefix.isBlank(),
                     "an empty framework prefix matches every class and hides all call sites");
         }
+
         for (String prefix : EchoConfig.parse("framework=;;com.example.").frameworkPrefixes()) {
             assertTrue(!prefix.isBlank(), "an empty framework prefix matches every class");
         }

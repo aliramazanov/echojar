@@ -36,6 +36,16 @@ public class PoolPreparedStatement extends AbstractPreparedStatement {
     }
 
     @Override
+    public long executeLargeUpdate() throws SQLException {
+        return delegate.executeLargeUpdate();
+    }
+
+    @Override
+    public long[] executeLargeBatch() throws SQLException {
+        return delegate.executeLargeBatch();
+    }
+
+    @Override
     public int[] executeBatch() throws SQLException {
         return delegate.executeBatch();
     }

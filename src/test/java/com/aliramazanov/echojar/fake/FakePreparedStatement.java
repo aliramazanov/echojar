@@ -11,7 +11,7 @@ public class FakePreparedStatement extends AbstractPreparedStatement {
     private int batched;
     private boolean closed;
 
-    FakePreparedStatement(Connection connection, String sql) {
+    protected FakePreparedStatement(Connection connection, String sql) {
         this.connection = connection;
         this.sql = sql;
     }
@@ -41,6 +41,23 @@ public class FakePreparedStatement extends AbstractPreparedStatement {
     @Override
     public void addBatch() {
         batched++;
+    }
+
+    @Override
+    public long executeLargeUpdate() throws SQLException {
+        Db.executed(sql);
+        return 1;
+    }
+
+    @Override
+    public long[] executeLargeBatch() throws SQLException {
+        long[] results = new long[batched];
+        for (int i = 0; i < batched; i++) {
+            Db.executed(sql);
+            results[i] = 1;
+        }
+        batched = 0;
+        return results;
     }
 
     @Override

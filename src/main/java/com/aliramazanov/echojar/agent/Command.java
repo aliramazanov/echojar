@@ -3,11 +3,8 @@ package com.aliramazanov.echojar.agent;
 import java.util.Locale;
 
 enum Command {
-
     INSTALL,
-
     DUMP,
-
     RESET;
 
     static Command of(String value) {

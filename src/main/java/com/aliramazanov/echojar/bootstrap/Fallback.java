@@ -2,6 +2,7 @@ package com.aliramazanov.echojar.bootstrap;
 
 import com.aliramazanov.echojar.bootstrap.findings.Lease;
 import com.aliramazanov.echojar.bootstrap.findings.SqlTemplate;
+
 import java.util.List;
 
 public final class Fallback {
@@ -21,11 +22,13 @@ public final class Fallback {
     }
 
     private static SqlCarrier holder(Object statement, boolean create) {
-        return create ? STATEMENTS.computeIfAbsent(statement, DetachedSql::new) : STATEMENTS.get(statement);
+        return create ? STATEMENTS.computeIfAbsent(statement, DetachedSql::new) :
+                STATEMENTS.get(statement);
     }
 
     static LeaseCarrier connection(Object connection, boolean create) {
-        return create ? CONNECTIONS.computeIfAbsent(connection, DetachedLease::new) : CONNECTIONS.get(connection);
+        return create ? CONNECTIONS.computeIfAbsent(connection, DetachedLease::new) :
+                CONNECTIONS.get(connection);
     }
 
     private static final class DetachedSql implements SqlCarrier, StatementCarrier {

@@ -4,11 +4,6 @@ import java.io.PrintStream;
 
 public final class LiveReport {
 
-    public interface Printer {
-
-        void print(PrintStream out, int threshold);
-    }
-
     private static volatile Printer printer;
 
     private LiveReport() {
@@ -23,7 +18,14 @@ public final class LiveReport {
         if (current == null) {
             return false;
         }
+
         current.print(out, threshold);
+
         return true;
+    }
+
+    public interface Printer {
+
+        void print(PrintStream out, int threshold);
     }
 }

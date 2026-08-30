@@ -51,6 +51,7 @@ final class DiagnosticsBean implements DiagnosticsMXBean {
         List<String> detail = new ArrayList<>();
         health.suppressedBySite().forEach((site, count) ->
                 detail.add(site + " x" + count + " first: " + health.firstFailureBySite().get(site)));
+
         return detail.toArray(String[]::new);
     }
 }

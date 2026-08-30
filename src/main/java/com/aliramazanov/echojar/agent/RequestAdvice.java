@@ -13,13 +13,13 @@ final class RequestAdvice {
         private Boundary() {
         }
 
-        @Advice.OnMethodEnter(suppress = Throwable.class)
-        static void enter() {
+        @Advice.OnMethodEnter
+        public static void enter() {
             Units.enter();
         }
 
-        @Advice.OnMethodExit(suppress = Throwable.class, onThrowable = Throwable.class)
-        static void exit() {
+        @Advice.OnMethodExit(onThrowable = Throwable.class)
+        public static void exit() {
             Units.exit();
         }
     }

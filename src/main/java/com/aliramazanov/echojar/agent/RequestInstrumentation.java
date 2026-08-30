@@ -24,26 +24,37 @@ final class RequestInstrumentation {
         if (!config.units()) {
             return agent;
         }
+
         AgentBuilder built = agent;
+
         for (String servlet : SERVLETS) {
             built = boundary(built, servlet, config, "service", 2);
         }
+
         for (String filter : FILTERS) {
             built = boundary(built, filter, config, "doFilter", 3);
         }
+
         return built;
     }
 
     private static AgentBuilder boundary(
-            AgentBuilder agent, String iface, EchoConfig config, String method, int arity) {
-        return agent
-                .type(declares(iface, config))
-                .transform((builder, type, loader, module, domain) -> builder
+            AgentBuilder agent,
+            String iface,
+            EchoConfig config,
+            String method,
+            int arity
+    ) {
+        return agent.type(declares(iface, config)).transform((builder, type, loader, module, domain) ->
+                Modules.reading(module, builder)
                         .visit(Advice.to(RequestAdvice.Boundary.class)
-                                .on(named(method).and(takesArguments(arity)).and(isPublic()))));
+                        .on(named(method).and(takesArguments(arity)).and(isPublic()))));
     }
 
-    private static ElementMatcher.Junction<TypeDescription> declares(String iface, EchoConfig config) {
+    private static ElementMatcher.Junction<TypeDescription> declares(
+            String iface,
+            EchoConfig config
+    ) {
         return hasSuperType(named(iface)).and(not(isInterface())).and(not(config.ignoredTypes()));
     }
 }

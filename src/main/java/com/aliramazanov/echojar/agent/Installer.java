@@ -42,6 +42,7 @@ public final class Installer {
             return;
         }
 
+        Modules.using(instrumentation);
         EchoConfig config = requested;
         Detector detector = new Detector(config);
         Echo.install(detector);
@@ -51,8 +52,12 @@ public final class Installer {
         Telemetry.register();
 
         RequestInstrumentation.apply(
-                JdbcInstrumentation.apply(agent(config, mode, out), config, mode), config)
-                .installOn(instrumentation);
+                JdbcInstrumentation.apply(
+                        agent(config, mode, out),
+                        config,
+                        mode
+                ), config
+        ).installOn(instrumentation);
 
         Report report = new Report(config.threshold(), detector, config.diagnostics());
         LiveReport.install(report::print);
@@ -71,7 +76,9 @@ public final class Installer {
 
     private static boolean ready() {
         if (Echo.class.getClassLoader() != null) {
-            System.err.println("echojar: bootstrap classes did not land on the bootstrap loader, agent disabled");
+            System.err.println(
+                    "echojar: bootstrap classes did not land on the bootstrap loader, agent " +
+                            "disabled");
             return false;
         }
 
@@ -86,8 +93,7 @@ public final class Installer {
     private static AgentBuilder agent(EchoConfig config, Mode mode, PrintStream out) {
         AgentBuilder agent = new AgentBuilder.Default().ignore(ignored(config));
         if (mode.frozen()) {
-            agent = agent
-                    .disableClassFormatChanges()
+            agent = agent.disableClassFormatChanges()
                     .with(AgentBuilder.RedefinitionStrategy.RETRANSFORMATION)
                     .with(AgentBuilder.RedefinitionStrategy.BatchAllocator.ForFixedSize.ofSize(1))
                     .with(AgentBuilder.RedefinitionStrategy.DiscoveryStrategy.Reiterating.INSTANCE);
@@ -110,7 +116,8 @@ public final class Installer {
         try {
             return new PrintStream(new FileOutputStream(config.output(), true), true);
         } catch (IOException failure) {
-            System.err.println("echojar: cannot write to " + config.output() + ", reporting to stderr");
+            System.err.println(
+                    "echojar: cannot write to " + config.output() + ", reporting to stderr");
             return System.err;
         }
     }
@@ -118,6 +125,7 @@ public final class Installer {
     private static AgentBuilder.RawMatcher ignored(EchoConfig config) {
         ClassLoader platform = ClassLoader.getPlatformClassLoader();
         ElementMatcher<? super TypeDescription> types = JdbcInstrumentation.globalIgnores(config);
-        return (type, loader, module, loaded, domain) -> loader == null || loader == platform || types.matches(type);
+        return (type, loader, module, loaded, domain) -> loader == null || loader == platform ||
+                types.matches(type);
     }
 }

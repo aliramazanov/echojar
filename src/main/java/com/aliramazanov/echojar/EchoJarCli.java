@@ -13,7 +13,7 @@ public final class EchoJarCli {
     private EchoJarCli() {
     }
 
-    public static void main(String[] arguments) {
+    static void main(String[] arguments) {
         if (arguments.length == 0) {
             usage();
             System.exit(2);
@@ -25,6 +25,7 @@ public final class EchoJarCli {
                 case "dump" -> dump(arguments);
                 case "reset" -> reset(arguments);
                 case "list" -> list();
+
                 default -> {
                     usage();
                     System.exit(2);
@@ -32,7 +33,8 @@ public final class EchoJarCli {
             }
         } catch (Exception failure) {
             String reason = failure.getMessage();
-            System.err.println("echojar: " + (reason == null ? failure.getClass().getSimpleName() : reason));
+            System.err.println(
+                    "echojar: " + (reason == null ? failure.getClass().getSimpleName() : reason));
             System.exit(1);
         }
     }
@@ -78,9 +80,16 @@ public final class EchoJarCli {
         load(pid, options.toString());
 
         if (toFile) {
-            System.err.printf("echojar: wrote the current findings of %s to %s%n", pid, arguments[2]);
+            System.err.printf(
+                    "echojar: wrote the current findings of %s to %s%n",
+                    pid,
+                    arguments[2]
+            );
         } else {
-            System.err.printf("echojar: asked %s to print its current findings to its own stderr%n", pid);
+            System.err.printf(
+                    "echojar: asked %s to print its current findings to its own stderr%n",
+                    pid
+            );
         }
     }
 
@@ -128,18 +137,17 @@ public final class EchoJarCli {
     }
 
     private static void usage() {
-        System.err.println(
-                """
-                        usage:
-                          java -jar echojar.jar attach <pid> [options]   load the agent into a running JVM
-                          java -jar echojar.jar dump <pid> [file] [n]    print what a running agent has found, optionally at threshold n
-                          java -jar echojar.jar reset <pid>              forget everything counted so far
-                          java -jar echojar.jar list                     show attachable JVMs
-
-                        options are comma separated, for example threshold=10,noise=false
-
-                        the target JVM must allow dynamic agent loading. JDK 21 and later print a
-                        warning on attach; start the target with -XX:+EnableDynamicAgentLoading to
-                        silence it.""");
+        System.err.println("""
+                usage:
+                  java -jar echojar.jar attach <pid> [options]   load the agent into a running JVM
+                  java -jar echojar.jar dump <pid> [file] [n]    print what a running agent has found, optionally at threshold n
+                  java -jar echojar.jar reset <pid>              forget everything counted so far
+                  java -jar echojar.jar list                     show attachable JVMs
+                
+                options are comma separated, for example threshold=10,noise=false
+                
+                the target JVM must allow dynamic agent loading. JDK 21 and later print a
+                warning on attach; start the target with -XX:+EnableDynamicAgentLoading to
+                silence it.""");
     }
 }

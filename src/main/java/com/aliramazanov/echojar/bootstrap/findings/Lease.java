@@ -9,6 +9,7 @@ public final class Lease {
 
     private final Map<SqlTemplate, Echoes> byTemplate = new HashMap<>();
 
+
     public synchronized Echoes record(SqlTemplate template, int count) {
         Echoes echoes = byTemplate.computeIfAbsent(template, Echoes::new);
         echoes.record(count);

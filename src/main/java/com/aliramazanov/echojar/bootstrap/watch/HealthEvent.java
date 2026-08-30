@@ -42,9 +42,11 @@ public final class HealthEvent extends Event {
 
     static void emit() {
         HealthEvent event = new HealthEvent();
+
         if (!event.isEnabled()) {
             return;
         }
+
         Diagnostics.Snapshot health = Diagnostics.snapshot();
         event.executions = health.executions();
         event.leasesClosed = health.leasesClosed();
@@ -54,6 +56,7 @@ public final class HealthEvent extends Event {
         event.stackWalks = health.stackWalks();
         event.typesUnresolvable = health.typesUnresolvable();
         event.suppressed = health.suppressedTotal();
+
         event.commit();
     }
 }

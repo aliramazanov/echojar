@@ -5,17 +5,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public final class Journal {
 
-    public enum Level {
-        OFF,
-        WARN,
-        INFO,
-        DEBUG
-    }
-
     private static final long DEFAULT_BUDGET = 200;
-
     private static final AtomicLong WRITTEN = new AtomicLong();
-
     private static volatile Level level = Level.WARN;
     private static volatile PrintStream out = System.err;
     private static volatile long budget = DEFAULT_BUDGET;
@@ -49,13 +40,28 @@ public final class Journal {
         if (requested.ordinal() > level.ordinal() || level == Level.OFF) {
             return;
         }
+
         long written = WRITTEN.incrementAndGet();
+
         if (written > budget) {
             if (written == budget + 1) {
-                out.printf("echojar [%s] further diagnostics suppressed after %d lines%n", "WARN", budget);
+                out.printf(
+                        "echojar [%s] further diagnostics suppressed after %d lines%n",
+                        "WARN",
+                        budget
+                );
             }
+
             return;
         }
+
         out.printf("echojar [%s] %s%n", requested, message);
+    }
+
+    public enum Level {
+        OFF,
+        WARN,
+        INFO,
+        DEBUG
     }
 }

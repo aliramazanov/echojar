@@ -8,6 +8,11 @@ echojar is a Java agent. It attaches to an application you did not modify, liste
 JDBC layer, and reports where one logical operation turned into hundreds of physical
 queries, with the line of code that caused it.
 
+Verified against PostgreSQL, MySQL, MariaDB, SQL Server, CockroachDB, H2, HSQLDB, Derby and
+SQLite; behind HikariCP, DBCP2, c3p0, Agroal and the Tomcat JDBC pool; through Hibernate,
+EclipseLink, MyBatis, jOOQ, JDBI, Spring JDBC and plain JDBC; on the classpath and with the
+driver on the module path.
+
 ```console
 $ java -javaagent:echojar.jar -jar shop.jar
 
@@ -60,6 +65,7 @@ Comma separated, either on the `-javaagent` argument or as `-Dechojar.*` system 
 | `units` | `true` | treat a servlet or filter as a request boundary, above the connection lease |
 | `noise` | `true` | suppress validation pings and sequence reads |
 | `depth` | `200` | maximum stack frames walked when resolving a call site |
+| `app` | unset | your own package prefixes. When set, only these count as a call site |
 | `framework` | see report | extra package prefixes to treat as framework, not application code |
 | `ignore` | see report | extra package prefixes to never instrument |
 | `templates` | `5000` | cap on the raw SQL to template cache |
@@ -88,10 +94,41 @@ statement crosses the threshold and `echojar.Health` every ten seconds.
 - Work that leaves the request thread falls back to the connection lease, where a loop that
   reconnects for every query cannot be told from normal traffic. The report says so, with the
   count, when most units of work were not inside a request.
+- Call sites are found by skipping known framework packages, which no list can ever finish.
+  If the report names a framework rather than your code, set `app=` to your own package
+  prefixes and everything else becomes framework.
+- A statement executed from inside another statement's execution, which is what a trigger or
+  a stored function does, is counted in its own right. Layers of one execution are collapsed by
+  the identity of the statement rather than by nesting depth, because a pool's generated proxy
+  reaches the same execution several times on the same object while a trigger runs a different
+  statement entirely.
 - A statement gets a bounded number of stack walks, so if the same SQL runs from several
   places the report names one and says how many were ambiguous.
+- Statements longer than 2048 characters are normalised on every prepare rather than cached by
+  their text. A cache bounded by entry count is not bounded in bytes, and an application that
+  builds large statements on the fly would otherwise leave hundreds of megabytes of dead SQL
+  behind it.
+- Leases that are still open are included in the report, folded in as they stand without
+  being recorded, so a lease that is reported and later closes is still counted exactly once.
+  Without that, a pool that hands out a proxy and returns the physical connection instead of
+  closing it would report nothing at all.
 - Only one agent per JVM. A second `attach` is refused rather than weaving twice.
 - The report prints the loudest 25 echoes and states how many it left out.
+
+## How the counts are kept honest
+
+Every counting bug found in comparable tools is a special case of one invariant breaking:
+whatever the driver actually ran is what the agent counted. Wrapping layers counted twice, a
+statement running inside another one lost, a batch of twenty collapsed into one, an execute
+method nobody implemented. Naming those cases one at a time only ever catches the ones already
+known, so `ConformanceFuzzIT` composes them at random instead: three thousand runs over pooled,
+delegating, subclassing, non conformant and trigger firing connections, mixing prepared and
+plain statements, every execute method, batches, cleared batches and refused operations, then
+asserts the agent's tally equals the driver's, statement for statement.
+
+It is checked against deliberately broken builds rather than assumed to work. Counting by
+nesting depth instead of statement identity is caught at seed 4, dropping the wrapper check at
+seed 3, collapsing a batch at seed 1, and forgetting `executeLargeUpdate` at seed 0.
 
 ## Overhead
 

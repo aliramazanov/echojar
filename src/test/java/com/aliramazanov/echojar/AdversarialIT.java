@@ -1,9 +1,20 @@
 package com.aliramazanov.echojar;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.aliramazanov.echojar.bootstrap.findings.Finding;
 import com.aliramazanov.echojar.bootstrap.findings.Ledger;
@@ -12,15 +23,6 @@ import com.aliramazanov.echojar.fake.ExplodingConnection;
 import com.aliramazanov.echojar.fake.FakeConnection;
 import com.aliramazanov.echojar.fake.FakeDriver;
 import com.aliramazanov.echojar.fake.NonConformantPoolConnection;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 
 class AdversarialIT {
 
@@ -113,6 +115,7 @@ class AdversarialIT {
 
     @Test
     void aConnectionSharedByTwoThreadsDoesNotLoseCounts() throws Exception {
+        java.util.concurrent.atomic.AtomicReference<Throwable> blewUp = new java.util.concurrent.atomic.AtomicReference<>();
         int perThread = 500;
         try (Connection connection = FakeDriver.pooled()) {
             PreparedStatement statement = connection.prepareStatement(SQL);
@@ -125,7 +128,8 @@ class AdversarialIT {
                         for (int query = 0; query < perThread; query++) {
                             statement.executeQuery();
                         }
-                    } catch (Exception ignored) {
+                    } catch (Throwable failure) {
+                        blewUp.compareAndSet(null, failure);
                     } finally {
                         done.countDown();
                     }
@@ -134,6 +138,7 @@ class AdversarialIT {
             start.countDown();
             assertTrue(done.await(60, TimeUnit.SECONDS), "workers did not finish");
         }
+        assertNull(blewUp.get(), () -> "a worker blew up: " + blewUp.get());
         assertEquals(2 * perThread, Db.executed().size(), "the driver saw every query");
         assertEquals(2 * perThread, only().peakPerLease(), "no counts were lost to a race");
     }
@@ -157,14 +162,81 @@ class AdversarialIT {
     }
 
     @Test
-    void aConnectionThatIsNeverClosedIsNotReported() throws SQLException {
+    void aConnectionThatIsNeverClosedIsStillReported() throws SQLException {
         Connection connection = FakeDriver.pooled();
         PreparedStatement statement = connection.prepareStatement(SQL);
         for (int query = 0; query < 20; query++) {
             statement.executeQuery();
         }
         assertEquals(List.of(), Ledger.findings(),
-                "an open lease is not yet a finding, which is a known limit of the shutdown report");
+                "the ledger holds finished leases only");
+        String report = report(2);
+        assertTrue(report.contains("20 executions in one connection lease"),
+                "a pool that never closes the driver's own connection would otherwise be invisible:\n" + report);
+    }
+
+    @Test
+    void anOpenLeaseIsNotCountedTwiceWhenItFinallyCloses() throws SQLException {
+        Connection connection = FakeDriver.pooled();
+        PreparedStatement statement = connection.prepareStatement(SQL);
+        for (int query = 0; query < 20; query++) {
+            statement.executeQuery();
+        }
+        assertTrue(report(2).contains("20 executions in one connection lease"));
+        connection.close();
+
+        Finding finding = only();
+        assertEquals(20, finding.peakPerLease(), "reporting an open lease must not double it");
+        assertEquals(20, finding.totalExecutions());
+        assertEquals(1, finding.leases(), "one connection is one lease however often it was reported");
+        assertEquals(1, Ledger.leases());
+    }
+
+    @Test
+    void anOpenLeaseKeepsGrowingBetweenReports() throws SQLException {
+        Connection connection = FakeDriver.pooled();
+        PreparedStatement statement = connection.prepareStatement(SQL);
+        for (int query = 0; query < 6; query++) {
+            statement.executeQuery();
+        }
+        assertTrue(report(2).contains("6 executions in one connection lease"));
+        for (int query = 0; query < 5; query++) {
+            statement.executeQuery();
+        }
+        String later = report(2);
+        assertTrue(later.contains("11 executions in one connection lease"),
+                "the second report shows the lease as it stands now:\n" + later);
+    }
+
+    private static String report(int threshold) {
+        java.io.ByteArrayOutputStream sink = new java.io.ByteArrayOutputStream();
+        assertTrue(com.aliramazanov.echojar.bootstrap.LiveReport.print(
+                new java.io.PrintStream(sink, true, java.nio.charset.StandardCharsets.UTF_8), threshold),
+                "no agent report is installed in this JVM");
+        return sink.toString(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    @Test
+    void aStatementRunFromInsideAnotherExecutionIsStillCounted() throws SQLException {
+        try (Connection connection = new com.aliramazanov.echojar.fake.TriggeringConnection()) {
+            try (PreparedStatement outer = connection.prepareStatement(SQL)) {
+                for (int row = 0; row < 9; row++) {
+                    outer.executeUpdate();
+                }
+            }
+        }
+        assertEquals(9, Db.count(SQL), "the driver ran the outer statement nine times");
+        assertEquals(9, Db.count(com.aliramazanov.echojar.fake.TriggeringConnection.TRIGGERED),
+                "and the triggered statement nine times");
+
+        Finding triggered = Ledger.findings().stream()
+                .filter(finding -> finding.template().text().contains("fake_audit"))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError(
+                        "the triggered statement vanished, which is how a nested execute gets lost: "
+                                + Ledger.findings()));
+        assertEquals(9, triggered.totalExecutions(),
+                "every nested execution counts, not just the outermost frame");
     }
 
     @Test
@@ -183,6 +255,7 @@ class AdversarialIT {
 
     @Test
     void manyConcurrentLeasesAggregateCorrectly() throws Exception {
+        java.util.concurrent.atomic.AtomicReference<Throwable> blewUp = new java.util.concurrent.atomic.AtomicReference<>();
         int workers = 8;
         int leasesPerWorker = 250;
         int queriesPerLease = 6;
@@ -200,7 +273,8 @@ class AdversarialIT {
                             }
                         }
                     }
-                } catch (Exception ignored) {
+                } catch (Throwable failure) {
+                    blewUp.compareAndSet(null, failure);
                 } finally {
                     done.countDown();
                 }
@@ -208,6 +282,7 @@ class AdversarialIT {
         }
         start.countDown();
         assertTrue(done.await(120, TimeUnit.SECONDS), "workers did not finish");
+        assertNull(blewUp.get(), () -> "a worker blew up: " + blewUp.get());
 
         int expectedLeases = workers * leasesPerWorker;
         assertEquals(expectedLeases, Ledger.leases(), "every lease was recorded exactly once");
@@ -222,8 +297,8 @@ class AdversarialIT {
     @Test
     void anAbandonedBatchDoesNotLeakIntoTheNextLease() throws SQLException {
         String insert = "INSERT INTO adversarial_audit (note) VALUES (?)";
-        com.aliramazanov.echojar.fake.CachingPoolConnection pool =
-                new com.aliramazanov.echojar.fake.CachingPoolConnection(new FakeConnection());
+        com.aliramazanov.echojar.fake.CachingPoolConnection pool = new com.aliramazanov.echojar.fake.CachingPoolConnection(
+                new FakeConnection());
 
         PreparedStatement first = pool.prepareStatement(insert);
         for (int row = 0; row < 3; row++) {
@@ -249,8 +324,8 @@ class AdversarialIT {
     @Test
     void aPoolThatCachesStatementsStillCountsEveryLease() throws SQLException {
         String sql = "SELECT * FROM cached_item WHERE order_id = ?";
-        com.aliramazanov.echojar.fake.CachingPoolConnection pool =
-                new com.aliramazanov.echojar.fake.CachingPoolConnection(new FakeConnection());
+        com.aliramazanov.echojar.fake.CachingPoolConnection pool = new com.aliramazanov.echojar.fake.CachingPoolConnection(
+                new FakeConnection());
         for (int borrow = 0; borrow < 4; borrow++) {
             PreparedStatement statement = pool.prepareStatement(sql);
             for (int query = 0; query < 6; query++) {

@@ -10,6 +10,7 @@ import com.aliramazanov.echojar.bootstrap.findings.CallSite;
 import com.aliramazanov.echojar.bootstrap.findings.Echoes;
 import com.aliramazanov.echojar.bootstrap.findings.Lease;
 import com.aliramazanov.echojar.bootstrap.findings.Ledger;
+import com.aliramazanov.echojar.bootstrap.findings.OpenLeases;
 import com.aliramazanov.echojar.bootstrap.findings.SqlTemplate;
 import com.aliramazanov.echojar.bootstrap.watch.Diagnostics;
 import com.aliramazanov.echojar.bootstrap.watch.EchoEvent;
@@ -25,7 +26,13 @@ final class Detector implements EchoSink {
 
     Detector(EchoConfig config) {
         this.templates = new Templates(config.templateCacheLimit(), config.suppressNoise());
-        this.sites = new CallSites(config.frameworkPrefixes(), config.stackDepth());
+
+        this.sites = new CallSites(
+                config.frameworkPrefixes(),
+                config.applicationPrefixes(),
+                config.stackDepth()
+        );
+
         this.threshold = config.threshold();
     }
 
@@ -34,7 +41,11 @@ final class Detector implements EchoSink {
     }
 
     long ambiguous() {
-        return attributions.values().stream().filter(attribution -> attribution.ambiguous).count();
+        return attributions
+                .values()
+                .stream()
+                .filter(attribution -> attribution.ambiguous)
+                .count();
     }
 
     @Override
@@ -46,13 +57,15 @@ final class Detector implements EchoSink {
         }
 
         if (attributions.get(template.id()) == null) {
-            attributions.computeIfAbsent(template.id(), key -> {
-                Attribution first = new Attribution();
-                first.walks.incrementAndGet();
-                Diagnostics.stackWalk();
-                first.prepared = sites.resolve();
-                return first;
-            });
+            attributions.computeIfAbsent(
+                    template.id(), key -> {
+                        Attribution first = new Attribution();
+                        first.walks.incrementAndGet();
+                        Diagnostics.stackWalk();
+                        first.prepared = sites.resolve();
+                        return first;
+                    }
+            );
         }
 
         return template;
@@ -64,11 +77,19 @@ final class Detector implements EchoSink {
             return;
         }
 
-        Attribution attribution = attributions.computeIfAbsent(echoes.template().id(), key -> new Attribution());
+        Attribution attribution = attributions.computeIfAbsent(
+                echoes.template().id(),
+                key -> new Attribution()
+        );
 
         CallSite resolved = attribute(attribution);
         echoes.site(resolved);
-        EchoEvent.record(echoes.template().text(), echoes.executions(), String.valueOf(resolved));
+
+        EchoEvent.record(
+                echoes.template().text(),
+                echoes.executions(),
+                String.valueOf(resolved)
+        );
     }
 
     private CallSite attribute(Attribution attribution) {
@@ -98,8 +119,19 @@ final class Detector implements EchoSink {
     @Override
     public void leaseClosed(Lease lease) {
         List<Echoes> closing = lease.echoes();
+        attribute(closing);
+        OpenLeases.closed(lease);
+        Ledger.record(closing);
+    }
 
-        for (Echoes echoes : closing) {
+    void resolve(List<Lease> pending) {
+        for (Lease lease : pending) {
+            attribute(lease.echoes());
+        }
+    }
+
+    private void attribute(List<Echoes> echoing) {
+        for (Echoes echoes : echoing) {
             if (echoes.site() == null) {
                 Attribution known = attributions.get(echoes.template().id());
                 if (known != null) {
@@ -107,18 +139,13 @@ final class Detector implements EchoSink {
                 }
             }
         }
-
-        Ledger.record(closing);
     }
 
     private static final class Attribution {
 
         private final AtomicInteger walks = new AtomicInteger();
-
         private volatile CallSite site;
-
         private volatile CallSite prepared;
-
         private volatile boolean ambiguous;
     }
 }

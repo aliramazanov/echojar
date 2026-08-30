@@ -9,6 +9,7 @@ import com.aliramazanov.echojar.bootstrap.watch.Journal;
 
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
+
 import static net.bytebuddy.matcher.ElementMatchers.nameStartsWith;
 import static net.bytebuddy.matcher.ElementMatchers.none;
 
@@ -19,7 +20,8 @@ final class EchoConfig {
     private static final List<String> DEFAULT_IGNORED_TYPES = List.of(
             "org.jboss.jca.adapters.jdbc.",
             "org.apache.shardingsphere.shardingjdbc.jdbc.core.statement.",
-            "org.apache.shardingsphere.driver.jdbc.core.statement.");
+            "org.apache.shardingsphere.driver.jdbc.core.statement."
+    );
 
     private static final List<String> DEFAULT_FRAMEWORK_PREFIXES = List.of(
             "java.", "javax.", "jakarta.", "jdk.", "sun.", "com.sun.",
@@ -29,7 +31,10 @@ final class EchoConfig {
             "org.hibernate.", "org.springframework.", "org.jboss.", "org.apache.",
             "com.zaxxer.hikari.", "org.postgresql.", "com.mysql.", "oracle.jdbc.",
             "org.h2.", "org.mariadb.", "org.sqlite.", "com.microsoft.sqlserver.",
-            "net.bytebuddy.");
+            "org.hsqldb.", "com.mchange.", "io.agroal.", "org.apache.ibatis.", "org.mybatis.",
+            "org.jooq.", "org.junit.", "junit.", "org.testcontainers.", "org.mockito.",
+            "net.bytebuddy."
+    );
 
     private final int threshold;
     private final int templateCacheLimit;
@@ -39,6 +44,7 @@ final class EchoConfig {
     private final boolean units;
     private final ElementMatcher.Junction<TypeDescription> ignoredTypes;
     private final List<String> frameworkPrefixes;
+    private final List<String> applicationPrefixes;
     private final String output;
     private final Journal.Level logLevel;
     private final boolean diagnostics;
@@ -54,6 +60,7 @@ final class EchoConfig {
         this.units = bool(options, "units", true);
         this.ignoredTypes = matcher(prefixes(options.get("ignore"), DEFAULT_IGNORED_TYPES));
         this.frameworkPrefixes = prefixes(options.get("framework"), DEFAULT_FRAMEWORK_PREFIXES);
+        this.applicationPrefixes = prefixes(options.get("app"), List.of());
         this.output = options.get("out");
         this.logLevel = level(options.get("log"));
         this.diagnostics = bool(options, "diagnostics", false);
@@ -68,7 +75,10 @@ final class EchoConfig {
             for (String pair : arguments.split(",")) {
                 int equals = pair.indexOf('=');
                 if (equals > 0) {
-                    options.put(pair.substring(0, equals).trim(), pair.substring(equals + 1).trim());
+                    options.put(
+                            pair.substring(0, equals).trim(),
+                            pair.substring(equals + 1).trim()
+                    );
                 }
             }
         }
@@ -82,22 +92,6 @@ final class EchoConfig {
         return new EchoConfig(options);
     }
 
-    Command command() {
-        return command;
-    }
-
-    int thresholdIfSet() {
-        return thresholdIfSet;
-    }
-
-    Journal.Level logLevel() {
-        return logLevel;
-    }
-
-    boolean diagnostics() {
-        return diagnostics;
-    }
-
     private static Journal.Level level(String value) {
         if (value == null || value.isBlank()) {
             return Journal.Level.WARN;
@@ -108,42 +102,6 @@ final class EchoConfig {
         } catch (IllegalArgumentException ignored) {
             return Journal.Level.WARN;
         }
-    }
-
-    String output() {
-        return output;
-    }
-
-    int threshold() {
-        return threshold;
-    }
-
-    int templateCacheLimit() {
-        return templateCacheLimit;
-    }
-
-    int stackDepth() {
-        return stackDepth;
-    }
-
-    boolean suppressNoise() {
-        return suppressNoise;
-    }
-
-    boolean verbose() {
-        return verbose;
-    }
-
-    boolean units() {
-        return units;
-    }
-
-    List<String> frameworkPrefixes() {
-        return frameworkPrefixes;
-    }
-
-    ElementMatcher.Junction<TypeDescription> ignoredTypes() {
-        return ignoredTypes;
     }
 
     private static ElementMatcher.Junction<TypeDescription> matcher(List<String> prefixes) {
@@ -165,6 +123,7 @@ final class EchoConfig {
 
         for (String prefix : value.split(";")) {
             String trimmed = prefix.trim();
+
             if (!trimmed.isEmpty()) {
                 merged.add(trimmed);
             }
@@ -205,5 +164,61 @@ final class EchoConfig {
                 || "on".equalsIgnoreCase(trimmed)
                 || "yes".equalsIgnoreCase(trimmed)
                 || "1".equals(trimmed);
+    }
+
+    Command command() {
+        return command;
+    }
+
+    int thresholdIfSet() {
+        return thresholdIfSet;
+    }
+
+    Journal.Level logLevel() {
+        return logLevel;
+    }
+
+    boolean diagnostics() {
+        return diagnostics;
+    }
+
+    String output() {
+        return output;
+    }
+
+    int threshold() {
+        return threshold;
+    }
+
+    int templateCacheLimit() {
+        return templateCacheLimit;
+    }
+
+    int stackDepth() {
+        return stackDepth;
+    }
+
+    boolean suppressNoise() {
+        return suppressNoise;
+    }
+
+    boolean verbose() {
+        return verbose;
+    }
+
+    boolean units() {
+        return units;
+    }
+
+    List<String> frameworkPrefixes() {
+        return frameworkPrefixes;
+    }
+
+    List<String> applicationPrefixes() {
+        return applicationPrefixes;
+    }
+
+    ElementMatcher.Junction<TypeDescription> ignoredTypes() {
+        return ignoredTypes;
     }
 }

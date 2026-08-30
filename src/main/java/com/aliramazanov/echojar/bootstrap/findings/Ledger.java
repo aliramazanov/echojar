@@ -20,6 +20,7 @@ public final class Ledger {
     public static void record(List<Echoes> closing) {
         synchronized (FINDINGS) {
             leases++;
+
             for (Echoes echoes : closing) {
                 FINDINGS.computeIfAbsent(echoes.template(), Finding::new).merge(echoes);
             }
@@ -27,8 +28,21 @@ public final class Ledger {
     }
 
     public static List<Finding> findings() {
+        return findings(List.of());
+    }
+
+    public static List<Finding> findings(List<Lease> pending) {
         synchronized (FINDINGS) {
-            return new ArrayList<>(FINDINGS.values());
+            Map<SqlTemplate, Finding> view = new LinkedHashMap<>();
+            FINDINGS.forEach((template, finding) -> view.put(template, finding.copy()));
+
+            for (Lease lease : pending) {
+                for (Echoes echoes : lease.echoes()) {
+                    view.computeIfAbsent(echoes.template(), Finding::new).merge(echoes);
+                }
+            }
+
+            return new ArrayList<>(view.values());
         }
     }
 
@@ -38,10 +52,17 @@ public final class Ledger {
         }
     }
 
+    public static long leases(int pending) {
+        synchronized (FINDINGS) {
+            return leases + pending;
+        }
+    }
+
     public static void reset() {
         synchronized (FINDINGS) {
             FINDINGS.clear();
             leases = 0;
         }
+        OpenLeases.reset();
     }
 }

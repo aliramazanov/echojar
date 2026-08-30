@@ -6,18 +6,7 @@ import java.util.concurrent.atomic.LongAdder;
 
 public final class Diagnostics {
 
-    public enum Site {
-        PREPARE,
-        EXECUTE,
-        CLOSE,
-        BATCH,
-        CALL_SITE,
-        TRANSFORM,
-        REPORT
-    }
-
     private static final int DESCRIBED_PER_SITE = 3;
-
     private static final LongAdder EXECUTIONS = new LongAdder();
     private static final LongAdder LEASES_OPENED = new LongAdder();
     private static final LongAdder LEASES_CLOSED = new LongAdder();
@@ -26,7 +15,6 @@ public final class Diagnostics {
     private static final LongAdder STACK_WALKS = new LongAdder();
     private static final LongAdder TYPES_TRANSFORMED = new LongAdder();
     private static final LongAdder TYPES_UNRESOLVABLE = new LongAdder();
-
     private static final Map<Site, LongAdder> SUPPRESSED = new EnumMap<>(Site.class);
     private static final Map<Site, String> FIRST_FAILURE = new EnumMap<>(Site.class);
 
@@ -110,17 +98,21 @@ public final class Diagnostics {
     public static Snapshot snapshot() {
         Map<Site, Long> suppressed = new EnumMap<>(Site.class);
         Map<Site, String> examples = new EnumMap<>(Site.class);
+
         long total = 0;
+
         synchronized (Diagnostics.class) {
             for (Site site : Site.values()) {
                 long count = SUPPRESSED.get(site).sum();
                 total += count;
+
                 if (count > 0) {
                     suppressed.put(site, count);
                     examples.put(site, FIRST_FAILURE.get(site));
                 }
             }
         }
+
         return new Snapshot(
                 EXECUTIONS.sum(),
                 LEASES_OPENED.sum(),
@@ -132,21 +124,27 @@ public final class Diagnostics {
                 TYPES_UNRESOLVABLE.sum(),
                 total,
                 suppressed,
-                examples);
+                examples
+        );
+    }
+
+    public enum Site {
+        PREPARE,
+        EXECUTE,
+        CLOSE,
+        BATCH,
+        CALL_SITE,
+        TRANSFORM,
+        REPORT
     }
 
     public record Snapshot(
-            long executions,
-            long leasesOpened,
-            long leasesClosed,
-            long units,
-            long statementsTemplated,
-            long stackWalks,
-            long typesTransformed,
-            long typesUnresolvable,
-            long suppressedTotal,
-            Map<Site, Long> suppressedBySite,
-            Map<Site, String> firstFailureBySite) {
+            long executions, long leasesOpened,
+            long leasesClosed, long units,
+            long statementsTemplated, long stackWalks, long typesTransformed,
+            long typesUnresolvable, long suppressedTotal,
+            Map<Site, Long> suppressedBySite, Map<Site, String> firstFailureBySite
+    ) {
 
         public long leasesOpen() {
             return Math.max(0, leasesOpened - leasesClosed);

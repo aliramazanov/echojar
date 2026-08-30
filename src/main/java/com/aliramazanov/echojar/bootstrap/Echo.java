@@ -1,8 +1,10 @@
 package com.aliramazanov.echojar.bootstrap;
 
 import com.aliramazanov.echojar.bootstrap.findings.Lease;
+import com.aliramazanov.echojar.bootstrap.findings.OpenLeases;
 import com.aliramazanov.echojar.bootstrap.findings.SqlTemplate;
 import com.aliramazanov.echojar.bootstrap.watch.Diagnostics;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -30,12 +32,15 @@ public final class Echo {
             if (template == null) {
                 return false;
             }
+
             SqlCarrier carrier = sqlState(statement, true);
             if (carrier == null) {
                 return false;
             }
+
             carrier.echojarTemplate(template);
             Diagnostics.templated();
+
             return true;
         } catch (Throwable failure) {
             Diagnostics.suppressed(Diagnostics.Site.PREPARE, failure);
@@ -46,6 +51,7 @@ public final class Echo {
     public static void owned(Object statement, Object connection) {
         try {
             SqlCarrier carrier = sqlState(statement, false);
+
             if (carrier != null) {
                 carrier.echojarOwner(leaseState(connection, true));
             }
@@ -58,20 +64,25 @@ public final class Echo {
         if (count <= 0) {
             return true;
         }
+
         try {
             SqlCarrier carrier = sqlState(statement, false);
             if (carrier == null) {
                 return true;
             }
+
             SqlTemplate template = carrier.echojarTemplate();
             if (template == null) {
                 return true;
             }
+
             LeaseCarrier owner = carrier.echojarOwner();
             if (owner == null) {
                 return false;
             }
+
             record(owner, template, count);
+
             return true;
         } catch (Throwable failure) {
             Diagnostics.suppressed(Diagnostics.Site.EXECUTE, failure);
@@ -88,15 +99,19 @@ public final class Echo {
             if (carrier == null) {
                 return;
             }
+
             SqlTemplate template = carrier.echojarTemplate();
             if (template == null) {
                 return;
             }
+
             LeaseCarrier owner = leaseState(connection, true);
             if (owner == null) {
                 return;
             }
+
             carrier.echojarOwner(owner);
+
             record(owner, template, count);
         } catch (Throwable failure) {
             Diagnostics.suppressed(Diagnostics.Site.EXECUTE, failure);
@@ -112,6 +127,7 @@ public final class Echo {
             if (owner == null) {
                 return;
             }
+
             SqlTemplate template = sink.template(sql);
             if (template != null) {
                 record(owner, template, count);
@@ -138,8 +154,10 @@ public final class Echo {
             if (carrier == null) {
                 return 0;
             }
+
             int pending = carrier.echojarBatch();
             carrier.echojarBatch(0);
+
             return executed(statement, pending) ? 0 : pending;
         } catch (Throwable failure) {
             Diagnostics.suppressed(Diagnostics.Site.BATCH, failure);
@@ -152,15 +170,18 @@ public final class Echo {
             if (sql == null) {
                 return;
             }
+
             StatementCarrier carrier = batchState(statement, true);
             if (carrier == null) {
                 return;
             }
+
             List<String> batch = carrier.echojarBatchSql();
             if (batch == null) {
                 batch = new ArrayList<>();
                 carrier.echojarBatchSql(batch);
             }
+
             batch.add(sql);
         } catch (Throwable failure) {
             Diagnostics.suppressed(Diagnostics.Site.BATCH, failure);
@@ -173,12 +194,15 @@ public final class Echo {
             if (carrier == null) {
                 return;
             }
+
             List<String> batch = carrier.echojarBatchSql();
             if (batch == null || batch.isEmpty()) {
                 return;
             }
+
             List<String> pending = new ArrayList<>(batch);
             batch.clear();
+
             for (String sql : pending) {
                 executedSql(physicalConnection, sql, 1);
             }
@@ -197,6 +221,7 @@ public final class Echo {
                 clearBatchSql(plain);
                 return;
             }
+
             SqlCarrier detached = Fallback.sql(statement, false);
             if (detached != null) {
                 detached.echojarBatch(0);
@@ -220,7 +245,9 @@ public final class Echo {
             if (carrier == null) {
                 return;
             }
+
             Lease lease;
+
             synchronized (carrier) {
                 lease = carrier.echojarLease();
                 if (lease == null) {
@@ -228,6 +255,7 @@ public final class Echo {
                 }
                 carrier.echojarLease(null);
             }
+
             Diagnostics.leaseClosed();
             sink.leaseClosed(lease);
         } catch (Throwable failure) {
@@ -239,6 +267,7 @@ public final class Echo {
         if (statement instanceof SqlCarrier carrier) {
             return carrier;
         }
+
         return statement == null ? null : Fallback.sql(statement, create);
     }
 
@@ -246,6 +275,7 @@ public final class Echo {
         if (statement instanceof StatementCarrier carrier) {
             return carrier;
         }
+
         return statement == null ? null : Fallback.batch(statement, create);
     }
 
@@ -253,6 +283,7 @@ public final class Echo {
         if (connection instanceof LeaseCarrier carrier) {
             return carrier;
         }
+
         return connection == null ? null : Fallback.connection(connection, create);
     }
 
@@ -271,9 +302,11 @@ public final class Echo {
             sink.executed(unit, unit.record(template, count));
             return;
         }
+
         if (carrier == null) {
             return;
         }
+
         Lease lease = carrier.echojarLease();
         if (lease == null) {
             synchronized (carrier) {
@@ -281,10 +314,12 @@ public final class Echo {
                 if (lease == null) {
                     lease = new Lease();
                     carrier.echojarLease(lease);
+                    OpenLeases.opened(lease);
                     Diagnostics.leaseOpened();
                 }
             }
         }
+
         Diagnostics.execution(count);
         sink.executed(lease, lease.record(template, count));
     }

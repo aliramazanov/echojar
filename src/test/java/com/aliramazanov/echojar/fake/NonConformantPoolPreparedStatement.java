@@ -31,6 +31,16 @@ public class NonConformantPoolPreparedStatement extends AbstractPreparedStatemen
     }
 
     @Override
+    public long executeLargeUpdate() throws SQLException {
+        return delegate.executeLargeUpdate();
+    }
+
+    @Override
+    public long[] executeLargeBatch() throws SQLException {
+        return delegate.executeLargeBatch();
+    }
+
+    @Override
     public void setInt(int arg0, int arg1) throws SQLException {
         delegate.setInt(arg0, arg1);
     }
