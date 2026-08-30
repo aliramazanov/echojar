@@ -1,0 +1,58 @@
+name: Bug report
+description: echojar reported the wrong thing, or broke something
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did echojar do, and what did you expect instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: health
+    attributes:
+      label: Agent health block
+      description: >
+        Run with diagnostics=true and paste the health block from the end of the report.
+        It says what the agent caught and where, and it is usually the fastest route to the cause.
+      render: text
+    validations:
+      required: false
+
+  - type: input
+    id: counts
+    attributes:
+      label: If a count was wrong, what did the database say
+      description: >
+        The number from pg_stat_statements or your database's equivalent. This project is tested
+        against that as the reference, so it is the most useful single fact.
+    validations:
+      required: false
+
+  - type: input
+    id: setup
+    attributes:
+      label: Database, driver, pool and ORM
+      placeholder: PostgreSQL 17, pgjdbc 42.7.4, HikariCP 6.2, Hibernate 7
+    validations:
+      required: true
+
+  - type: input
+    id: java
+    attributes:
+      label: Output of java -version
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: How was the agent started
+      options:
+        - -javaagent at startup
+        - echojar attach against a running process
+        - both
+    validations:
+      required: true

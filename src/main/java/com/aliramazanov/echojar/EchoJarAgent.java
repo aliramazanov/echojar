@@ -11,6 +11,17 @@ import java.util.jar.JarFile;
 import com.aliramazanov.echojar.agent.Installer;
 import com.aliramazanov.echojar.agent.Mode;
 
+/**
+ * The class the JVM calls to start the agent.
+ *
+ * <p>Its job is to copy the small counting jar into the bootstrap loader, so that woven code can
+ * reach it from any classloader. It does this once. Copying it twice would give the JVM two sets
+ * of counters, and half the results would go missing.
+ *
+ * <p>If the copy fails, the agent stops instead of weaving calls that would not resolve. It
+ * prints the reason to {@code System.err}, because the log class lives in the jar that just
+ * failed to load.
+ */
 public final class EchoJarAgent {
 
     private static final String BOOTSTRAP_RESOURCE = "echojar-bootstrap.jar";

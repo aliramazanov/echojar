@@ -1,15 +1,8 @@
 # echojar
 
-**How many queries did that request really make?** Attach to a running JVM and hear the echo.
-
-echojar is a Java agent. It attaches to an application, listens at the
-JDBC layer, and reports where one logical operation turned into hundreds of physical
-queries, with the line of code that caused it.
-
-Verified against PostgreSQL, MySQL, MariaDB, SQL Server, CockroachDB, H2, HSQLDB, Derby and
-SQLite, behind HikariCP, DBCP2, c3p0, Agroal and the Tomcat JDBC pool, through Hibernate,
-EclipseLink, MyBatis, jOOQ, JDBI, Spring JDBC and plain JDBC on the classpath and with the
-driver on the module path.
+echojar is a Java agent that finds N+1 queries in a program while it runs, and tells you the line
+of code that caused them. You do not change the application, there is no dependency to add and no
+annotation to write.
 
 ```console
 $ java -javaagent:echojar.jar -jar shop.jar
@@ -21,140 +14,70 @@ echojar: 1 echo in 1 call site
     OrderService.summarise(OrderService.java:19)
 ```
 
-N+1 queries do not fail. They pass every test, look fine on a display with forty rows, and
-only surface as latency once real data arrives. The ORM is doing exactly what it was told,
-so nothing in the code looks wrong. The evidence exists only at runtime.
+Tested with PostgreSQL, MySQL, MariaDB, SQL Server, CockroachDB, H2, HSQLDB, Derby and SQLite,
+behind HikariCP, DBCP2, c3p0, Agroal and the Tomcat pool, through Hibernate, EclipseLink,
+MyBatis, jOOQ, JDBI, Spring JDBC and plain JDBC.
 
-## Use
+Three short documents cover the rest. [what.md](docs/what.md) is the problem it looks for and what
+it will not do, [why.md](docs/why.md) is the reasoning behind the design, and
+[how.md](docs/how.md) is the machinery.
 
-Attach at startup:
+## Use it
+
+Start the application with the agent attached:
 
 ```bash
 java -javaagent:echojar.jar -jar yourapp.jar
 ```
 
-Or attach to a JVM that is already running:
+Or attach to one that is already running:
 
 ```bash
-java -jar echojar.jar attach <pid>
 java -jar echojar.jar list
+java -jar echojar.jar attach <pid>
 ```
 
-A service that has been up for a week has counted a week of history, including whatever it
-did while starting, so the findings can be sliced rather than only read at shutdown:
+A server that has been up for a week is holding a week of counts, including everything it did
+while it was starting, so you can clear that and then measure one thing on its own:
 
 ```bash
-java -jar echojar.jar reset <pid>            # forget history, start a clean window
-curl http://localhost:8080/the-slow-page     # exercise the thing you suspect
-java -jar echojar.jar dump <pid> out.txt     # what did that alone cost
-java -jar echojar.jar dump <pid> out.txt 20  # same window, only statements past twenty
+java -jar echojar.jar reset <pid>            # clear the counts
+curl http://localhost:8080/the-slow-page     # do the thing you want to measure
+java -jar echojar.jar dump <pid> out.txt     # see what it cost
+java -jar echojar.jar dump <pid> out.txt 20  # same counts, only statements run 20 or more times
 ```
 
-Re-rendering at a different threshold costs nothing: what is recorded, the busiest unit of
-work each statement ever had, does not depend on the threshold.
+The last line prints the same counts again at a higher threshold. echojar keeps the busiest unit
+of work for every statement, so changing that number costs nothing.
 
 ## Options
 
-Comma separated, either on the `-javaagent` argument or as `-Dechojar.*` system properties.
+Comma separated, either after `-javaagent:echojar.jar=` or as `-Dechojar.*` system properties.
 
-| option | default | meaning |
-| --- | --- | --- |
-| `threshold` | `5` | executions of one template in one unit of work before it counts as an echo |
-| `units` | `true` | treat a servlet or filter as a request boundary, above the connection lease |
-| `noise` | `true` | suppress validation pings and sequence reads |
-| `depth` | `200` | maximum stack frames walked when resolving a call site |
-| `app` | unset | your own package prefixes. When set, only these count as a call site |
-| `framework` | see report | extra package prefixes to treat as framework, not application code |
-| `ignore` | see report | extra package prefixes to never instrument |
-| `templates` | `5000` | cap on the raw SQL to template cache |
-| `out` | stderr | write the report to a file instead |
-| `log` | `warn` | agent diagnostics level: `off`, `warn`, `info`, `debug` |
-| `diagnostics` | `false` | always print the agent health block, not only when something went wrong |
-| `verbose` | `false` | log every instrumentation decision |
-
-## Watching the agent itself
-
-An agent that swallows every exception so it cannot disturb its host is an agent that can
-fail silently, so echojar counts everything it discards. The report ends with a health block
-whenever anything was suppressed, naming the site and the first failure seen there and
-`diagnostics=true` prints it on clean runs too. The same counters are live over JMX at
-`com.aliramazanov.echojar:type=Diagnostics`, and as two JFR events, `echojar.Echo` when a
-statement crosses the threshold and `echojar.Health` every ten seconds.
-
-## What it does not do
-
-- It does not fix anything. It tells you where to look and what caused it.
-- It cannot tell a deliberate loop of queries from an accidental one.
-- A bulk insert loop is reported the same way a lazy collection is.
-- The unit of work is the request where echojar finds one, and the connection lease
-  otherwise. A servlet or filter marks the request, outermost wins. Applications that are not
-  servlet based can mark their own with `Units.enter()` and `Units.exit()`.
-- Work that leaves the request thread falls back to the connection lease, where a loop that
-  reconnects for every query cannot be told from normal traffic. The report says so, with the
-  count, when most units of work were not inside a request.
-- Call sites are found by skipping known framework packages, which no list can ever finish.
-  If the report names a framework rather than your code, set `app=` to your own package
-  prefixes and everything else becomes framework.
-- A statement executed from inside another statement's execution, which is what a trigger or
-  a stored function does, is counted in its own right. Layers of one execution are collapsed by
-  the identity of the statement rather than by nesting depth, because a pool's generated proxy
-  reaches the same execution several times on the same object while a trigger runs a different
-  statement entirely.
-- A statement gets a bounded number of stack walks, so if the same SQL runs from several
-  places the report names one and says how many were ambiguous.
-- Statements longer than 2048 characters are normalised on every prepare rather than cached by
-  their text. A cache bounded by entry count is not bounded in bytes, and an application that
-  builds large statements on the fly would otherwise leave hundreds of megabytes of dead SQL
-  behind it.
-- Leases that are still open are included in the report, folded in as they stand without
-  being recorded, so a lease that is reported and later closes is still counted exactly once.
-  Without that, a pool that hands out a proxy and returns the physical connection instead of
-  closing it would report nothing at all.
-- Only one agent per JVM. A second `attach` is refused rather than weaving twice.
-- The report prints the loudest 25 echoes and states how many it left out.
-
-## How the counts are kept honest
-
-Every counting bug found in comparable tools is a special case of one invariant breaking:
-whatever the driver actually ran is what the agent counted. Wrapping layers counted twice, a
-statement running inside another one lost, a batch of twenty collapsed into one, an execute
-method nobody implemented. Naming those cases one at a time only ever catches the ones already
-known, so `ConformanceFuzzIT` composes them at random instead: three thousand runs over pooled,
-delegating, subclassing, non conformant and trigger firing connections, mixing prepared and
-plain statements, every execute method, batches, cleared batches and refused operations, then
-asserts the agent's tally equals the driver's, statement for statement.
-
-It is checked against deliberately broken builds rather than assumed to work. Counting by
-nesting depth instead of statement identity is caught at seed 4, dropping the wrapper check at
-seed 3, collapsing a batch at seed 1, and forgetting `executeLargeUpdate` at seed 0.
-
-## Overhead
-
-A few tens of nanoseconds per query. `shop.HotPath` in the test sources measures it against
-a fake in-process driver that does no work, so the whole difference between an instrumented
-and an uninstrumented run is the agent:
-
-```bash
-mvn test-compile
-java -cp target/test-classes shop.HotPath
-java -javaagent:target/echojar.jar=out=/dev/null -cp target/test-classes shop.HotPath
-```
-
-On a real workload the cost is below what the workload can resolve, which follows from the
-microbenchmark: tens of nanoseconds against a database round trip of tens to hundreds of
-microseconds. Counts have been checked against `pg_stat_statements` on a Spring service under
-forty way concurrency, 589,250 executions with exact agreement.
+| option        | default    | what it does                                                                 |
+|---------------|------------|------------------------------------------------------------------------------|
+| `threshold`   | `5`        | how many times one statement must run in one unit of work to be reported     |
+| `units`       | `true`     | count per HTTP request when a servlet or filter is found, not per connection |
+| `noise`       | `true`     | ignore connection checks and sequence reads                                  |
+| `depth`       | `200`      | how many stack frames to search for the calling line                         |
+| `app`         | unset      | your own package names. When set, only these count as your code              |
+| `framework`   | see report | extra package names to treat as framework code                               |
+| `ignore`      | see report | extra package names to never touch                                           |
+| `templates`   | `5000`     | how many distinct statements to remember                                     |
+| `out`         | stderr     | write the report to a file                                                   |
+| `log`         | `warn`     | how much echojar says about itself: `off`, `warn`, `info`, `debug`           |
+| `diagnostics` | `false`    | always print the health block, not only after a problem                      |
+| `verbose`     | `false`    | log every class echojar looks at                                             |
 
 ## Requirements
 
-**Java 25 or newer, on the target JVM as well as the build.** The agent is compiled to class
-file version 69, so an older JVM refuses it with `UnsupportedClassVersionError`. Java 22 is the
-floor for building: below it the unnamed `_` variables, which say that a matcher ignores most of
-the five parameters its interface hands it, stop being legal.
+Java 25 or newer, both to build echojar and to run the application you attach it to. The agent is
+compiled to class file version 69, so an older JVM refuses it with `UnsupportedClassVersionError`.
+You can build for Java 22 or later by lowering `maven.compiler.release`.
 
-Attaching to a running JVM needs dynamic agent loading, which JDK 21 and later warn about and
-a future release will disable by default. Start the target with
-`-XX:+EnableDynamicAgentLoading` to silence the warning.
+Attaching to a running JVM needs dynamic agent loading. JDK 21 and later print a warning about it,
+and a future release will turn it off by default, so start the application with
+`-XX:+EnableDynamicAgentLoading` if you want the warning gone.
 
 ## Build
 
@@ -162,9 +85,12 @@ a future release will disable by default. Start the target with
 mvn verify
 ```
 
-Produces `target/echojar.jar`, which is both the agent and the CLI. No Docker and no
-database are needed: the tests run against a fake in-process JDBC driver, H2 behind a DBCP2
-pool, and forked JVMs for the attach path.
+That produces `target/echojar.jar`, which is both the agent and the command line tool. You do not
+need Docker or a database, because the tests use a fake in-process driver, H2 behind a DBCP2 pool,
+and separate JVMs for the attach tests.
+
+Contributing is covered in [CONTRIBUTING.md](CONTRIBUTING.md), and reporting a vulnerability in
+[SECURITY.md](SECURITY.md).
 
 ## License
 
