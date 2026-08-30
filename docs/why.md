@@ -68,9 +68,9 @@ echojar puts its code inside driver classes, and those classes belong to a class
 echojar does not choose, so the counters have to be reachable from every classloader in the JVM.
 Only one of them is, and how that works is in [how.md](how.md).
 
-The part worth knowing here is what the decision costs. The counting tier can only use what that
+The part worth knowing here is what the decision costs. The counting code can only use what that
 loader can see, and `java.sql` is not in that set, so the counting code takes `Object` parameters
-and anything that needs a JDBC type has to happen in the woven code instead. That is why the
+and anything that needs a JDBC type has to happen in the added code instead. That is why the
 counting classes look oddly untyped when you read them.
 
 ## Why the agent catches its own errors
@@ -79,7 +79,7 @@ If the agent throws, it breaks the application it was asked to observe, and the 
 a JDBC call the application author wrote and expects to work. For a diagnostic tool that is not an
 acceptable way to fail.
 
-So every method the woven code calls handles its own errors, and on failure it returns the answer
+So every method the added code calls handles its own errors, and on failure it returns the answer
 that counts nothing rather than an answer that counts wrongly.
 
 The risk that comes with that is failing quietly, so every error it catches is counted and shown

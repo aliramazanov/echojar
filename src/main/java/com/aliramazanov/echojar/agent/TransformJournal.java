@@ -19,7 +19,7 @@ final class TransformJournal extends AgentBuilder.Listener.Adapter {
     private static final ConcurrentMap<String, String> ORIGINS = new ConcurrentHashMap<>();
 
 
-    static DynamicType.Builder<?> weaving(
+    static DynamicType.Builder<?> rewriting(
             TypeDescription type,
             JavaModule module,
             ProtectionDomain domain,

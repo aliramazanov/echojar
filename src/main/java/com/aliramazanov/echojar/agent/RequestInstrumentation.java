@@ -47,7 +47,7 @@ final class RequestInstrumentation {
             int arity
     ) {
         return agent.type(declares(iface, config)).transform((builder, type, _, module, domain) ->
-                TransformJournal.weaving(type, module, domain, builder)
+                TransformJournal.rewriting(type, module, domain, builder)
                         .visit(Advice.to(RequestAdvice.Boundary.class)
                         .on(named(method).and(takesArguments(arity)).and(isPublic()))));
     }

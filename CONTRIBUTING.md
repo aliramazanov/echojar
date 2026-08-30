@@ -18,10 +18,10 @@ This produces `target/echojar.jar`, which is both the agent and the command line
 Unit tests run without the agent. They test the parts that are ordinary code, such as SQL
 normalising and the report.
 
-Integration tests run inside a JVM with the agent installed, which is the only way to test weaving
-at all. They share one JVM and one installed agent, so the agent's state is global. Every
-integration test must call `AgentState.reset()` in `@BeforeEach`. Resetting only the ledger is not
-enough, and a test that forgets leaks state into whichever test runs next.
+Integration tests run inside a JVM with the agent installed, which is the only way to test the
+class rewriting at all. They share one JVM and one installed agent, so the agent's state is
+global. Every integration test must call `AgentState.reset()` in `@BeforeEach`. Resetting only the
+ledger is not enough, and a test that forgets leaks state into whichever test runs next.
 
 `ConformanceFuzzIT` is the important one. It builds pooled, wrapped, subclassed, broken and
 trigger firing connections at random, three thousand times, and checks the agent's count against
@@ -57,11 +57,11 @@ In prose, plain words.
 
 These are not style preferences. They have each caused a real bug here.
 
-**Do not let the agent throw.** Every method that woven code calls must handle its own errors and
-return the answer that counts nothing. An exception escaping the agent lands inside a JDBC call
+**Do not let the agent throw.** Every method that the added code calls must handle its own errors
+and return the answer that counts nothing. An exception escaping the agent lands inside a JDBC call
 the application wrote and takes the application down. `TotalityTest` checks this.
 
-**Do not name `java.sql` types in the bootstrap package.** That tier is loaded by the bootstrap
+**Do not name `java.sql` types in the bootstrap package.** That code is loaded by the bootstrap
 classloader, which cannot see `java.sql`. It takes `Object` parameters for that reason. Naming a
 JDBC type there fails at runtime on the first query, not at compile time.
 

@@ -16,7 +16,7 @@ class GlobalIgnoresTest {
     @Test
     void mockedJdbcTypesAreNeverInstrumented() {
         assertTrue(ignored("org.mockito.codegen.PreparedStatement$MockitoMock$1234"),
-                "a mock records every call, so weaving one corrupts someone else's stubbing");
+                "a mock records every call, so rewriting one corrupts someone else's stubbing");
         assertTrue(ignored("java.sql.PreparedStatement$MockitoMock$77"));
         assertTrue(ignored("org.mockito.internal.creation.bytebuddy.MockAccess"));
         assertTrue(ignored("org.easymock.internal.ClassProxyFactory"));

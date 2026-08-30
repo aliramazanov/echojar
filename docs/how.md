@@ -79,9 +79,9 @@ statement crosses the threshold and `echojar.Health` fires every ten seconds.
 |-----------------------------------------------|--------------------------------------------------|
 | `com.aliramazanov.echojar`                    | the entry points and the command line tool       |
 | `com.aliramazanov.echojar.agent`              | rewriting classes, finding call sites, reporting |
-| `com.aliramazanov.echojar.bootstrap`          | the counting code that woven classes call        |
+| `com.aliramazanov.echojar.bootstrap`          | the counting code that the added code calls      |
 | `com.aliramazanov.echojar.bootstrap.findings` | what was counted, and the results                |
 | `com.aliramazanov.echojar.bootstrap.watch`    | what the agent is doing to itself                |
 
-The data only moves one way. Woven code records, the counting tier adds it up, and the agent tier
-decides what it means and prints it.
+The data only moves one way. The added code records, the counting code adds it up, and the agent
+works out what it means and prints it.
