@@ -19,9 +19,13 @@ Unit tests run without the agent. They test the parts that are ordinary code, su
 normalising and the report.
 
 Integration tests run inside a JVM with the agent installed, which is the only way to test the
-class rewriting at all. They share one JVM and one installed agent, so the agent's state is
-global. Every integration test must call `AgentState.reset()` in `@BeforeEach`. Resetting only the
+class rewriting at all. Most of them share that one JVM and one installed agent, so the agent's
+state is global, and those must call `AgentState.reset()` in `@BeforeEach`. Resetting only the
 ledger is not enough, and a test that forgets leaks state into whichever test runs next.
+
+Two kinds are exempt. The attach and command line tests start a JVM of their own, so they have no
+state to share. `ConformanceFuzzIT` clears the state itself at the top of each of its three
+thousand runs, which is stricter than doing it once per test method.
 
 `ConformanceFuzzIT` is the important one. It builds pooled, wrapped, subclassed, broken and
 trigger firing connections at random, three thousand times, and checks the agent's count against
@@ -71,6 +75,38 @@ those apart.
 
 **Do not cache anything keyed by raw SQL without a length limit.** A cache bounded by entry count
 is not bounded in bytes. An application building large SQL will fill the heap.
+
+## Releasing
+
+There are two branches. Work goes on dev, and main is only ever the last released state, so
+merging dev into main is what publishes a release.
+
+Versions are worked out from commit messages, so the message decides the number. A commit starting
+`feat:` bumps the minor, `fix:` and `perf:` bump the patch, and anything else changes nothing.
+Until 1.0 a breaking change bumps the minor rather than the major, so a `feat!:` on 0.3.2 gives
+0.4.0. A message that does not start with one of those words is left out of the version, so a batch
+of commits with no feat and no fix produces no new version at all.
+
+On dev, release-please keeps a pull request open that carries the next version number and the
+changelog entries for everything since the last release. It sits there and collects further commits
+as you push them. Merging it writes the new version into the pom and the changelog, and still
+releases nothing.
+
+Releasing is merging dev into main. The workflow reads the version out of the pom, stops quietly if
+that version is already tagged, and otherwise waits for you to approve it. Nobody else can approve
+it, and the approval can only come from main.
+
+Once approved it runs the full build and four gates that only matter for a release. The jar has to
+carry the version being released, and it has to start and answer `list`. The build has to come out
+reproducible, so that anyone can rebuild the tag and compare hashes. The result is signed with a
+build provenance attestation. Any of those failing stops the release rather than publishing
+something that cannot be checked. Only then is the tag created and the release published with the
+jar and its checksum.
+
+Publishing to Maven Central is set up but switched off, because it needs credentials this
+repository does not have. The `release` profile already builds the sources jar, the javadoc jar and
+the signatures. Turning it on means adding `MAVEN_USERNAME`, `MAVEN_PASSWORD`, `GPG_PRIVATE_KEY`
+and `GPG_PASSPHRASE` as repository secrets and adding a deploy step to the release workflow.
 
 ## Reporting a bug
 

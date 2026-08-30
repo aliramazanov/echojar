@@ -2,28 +2,64 @@ name: release
 
 on:
   push:
-    tags: ['v*']
+    branches: [main]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: Tag to build and publish
-        required: true
 
 permissions:
   contents: read
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
-  release:
+  decide:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+      needed: ${{ steps.read.outputs.needed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: maven
+
+      - id: read
+        name: Work out whether this version has been released already
+        run: |
+          version=$(mvn --batch-mode --no-transfer-progress help:evaluate \
+            -Dexpression=project.version -q -DforceStdout)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          if git rev-parse "v$version" > /dev/null 2>&1; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            echo "v$version is already tagged, nothing to release"
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+            echo "v$version has not been released yet"
+          fi
+
+  publish:
+    needs: decide
+    if: needs.decide.outputs.needed == 'true'
+    runs-on: ubuntu-latest
+    environment: release
     permissions:
       contents: write
       id-token: write
       attestations: write
+    env:
+      TAG: v${{ needs.decide.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
-          persist-credentials: false
+          persist-credentials: true
 
       - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with:
@@ -34,39 +70,72 @@ jobs:
       - name: Build and test
         run: mvn --batch-mode --no-transfer-progress --strict-checksums verify
 
-      - name: Check the tag matches the version that was built
-        env:
-          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      - name: Check the jar carries the version being released
         run: |
-          version=$(unzip -p target/echojar.jar \
+          built=$(unzip -p target/echojar.jar \
             META-INF/maven/com.aliramazanov/echojar/pom.properties | sed -n 's/^version=//p' | tr -d '\r')
-          if [ "$TAG" != "v$version" ]; then
-            echo "tag $TAG does not match the built version $version"
+          if [ "$TAG" != "v$built" ]; then
+            echo "the jar says $built but the release is $TAG"
             exit 1
           fi
-          echo "tag $TAG matches the built jar"
+          echo "the jar carries $TAG"
 
       - name: Check the jar is runnable
         run: |
           java -jar target/echojar.jar list > /dev/null
           unzip -l target/echojar.jar | grep -q 'echojar-bootstrap.jar'
 
+      - name: Check the build is reproducible
+        run: |
+          first=$(sha256sum target/echojar.jar | cut -d' ' -f1)
+          mvn --batch-mode --no-transfer-progress --strict-checksums clean package -DskipTests
+          second=$(sha256sum target/echojar.jar | cut -d' ' -f1)
+          if [ "$first" != "$second" ]; then
+            echo "this release could not be verified by rebuilding, the two jars differ"
+            exit 1
+          fi
+          echo "rebuild is byte for byte identical: $first"
+
       - name: Attest that this jar was built by this workflow
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: target/echojar.jar
 
-      - name: Write the checksum
-        run: sha256sum target/echojar.jar | sed 's| .*/| |' > target/echojar.jar.sha256
+      - name: Tag the release
+        run: |
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git tag -a "$TAG" -m "$TAG"
+          git push origin "$TAG"
 
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
+          sha256sum target/echojar.jar | sed 's| .*/| |' > target/echojar.jar.sha256
+
+          notes=--generate-notes
+
+          if [ -f CHANGELOG.md ]; then
+            awk -v want="${TAG#v}" '
+              /^## / {
+                if (found) exit
+                heading = $0
+                sub(/^## +/, "", heading)
+                sub(/^\[/, "", heading)
+                if (index(heading, want) == 1) { found = 1; next }
+              }
+              found { print }
+            ' CHANGELOG.md > release-notes.md
+
+            if [ -s release-notes.md ]; then
+              notes="--notes-file=release-notes.md"
+            fi
+          fi
+
           gh release create "$TAG" \
             --repo "$GITHUB_REPOSITORY" \
             --title "$TAG" \
-            --generate-notes \
+            "$notes" \
             target/echojar.jar \
             target/echojar.jar.sha256

@@ -1,7 +1,6 @@
 package com.aliramazanov.echojar.bootstrap;
 
 import com.aliramazanov.echojar.bootstrap.findings.Lease;
-import com.aliramazanov.echojar.bootstrap.findings.OpenLeases;
 import com.aliramazanov.echojar.bootstrap.findings.SqlTemplate;
 import com.aliramazanov.echojar.bootstrap.watch.Diagnostics;
 import org.jetbrains.annotations.NotNull;

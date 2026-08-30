@@ -1,16 +1,14 @@
 package com.aliramazanov.echojar;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.aliramazanov.echojar.bootstrap.findings.Finding;
@@ -39,15 +37,9 @@ class ConcurrencyAdversarialIT {
         return findings.getFirst();
     }
 
-    @BeforeEach
-    void reset() {
-        AgentState.reset();
-    }
-
     @Test
     void twoThreadsClosingTheSameConnectionRecordOneLease() throws Exception {
-        java.util.concurrent.atomic.AtomicReference<Throwable> surprise =
-                new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.concurrent.atomic.AtomicReference<Throwable> surprise = new java.util.concurrent.atomic.AtomicReference<>();
         int rounds = 400;
 
         for (int round = 0; round < rounds; round++) {
@@ -66,8 +58,8 @@ class ConcurrencyAdversarialIT {
                         try {
                             start.await();
                             connection.close();
-                        } catch (java.sql.SQLException expected) {
-                        } catch (Throwable unexpected) {
+                        } catch (SQLException expected) {
+                        } catch (InterruptedException unexpected) {
                             surprise.compareAndSet(null, unexpected);
                         } finally {
                             done.countDown();
@@ -82,8 +74,7 @@ class ConcurrencyAdversarialIT {
 
         assertEquals(
                 rounds, Ledger.leases(),
-                "a connection closed by two threads at once is still one lease"
-        );
+                "a connection closed by two threads at once is still one lease");
 
         Finding finding = only();
 
@@ -94,8 +85,7 @@ class ConcurrencyAdversarialIT {
 
     @Test
     void executingWhileAnotherThreadClosesNeverInventsExecutions() throws Exception {
-        java.util.concurrent.atomic.AtomicReference<Throwable> surprise =
-                new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.concurrent.atomic.AtomicReference<Throwable> surprise = new java.util.concurrent.atomic.AtomicReference<>();
 
         int rounds = 300;
         int queries = 20;
@@ -112,7 +102,7 @@ class ConcurrencyAdversarialIT {
                         for (int query = 0; query < queries; query++) {
                             statement.executeQuery();
                         }
-                    } catch (Exception ignored) {
+                    } catch (SQLException | InterruptedException expected) {
                     } finally {
                         done.countDown();
                     }
@@ -122,7 +112,7 @@ class ConcurrencyAdversarialIT {
                     try {
                         start.await();
                         connection.close();
-                    } catch (Exception ignored) {
+                    } catch (SQLException | InterruptedException expected) {
                     } finally {
                         done.countDown();
                     }
@@ -133,22 +123,21 @@ class ConcurrencyAdversarialIT {
             }
         }
 
+        Throwable actual = surprise.get();
+
         assertNull(
-                surprise.get(),
-                () -> "a worker hit something other than a SQLException: " + surprise.get()
-        );
+                actual,
+                () -> "a worker hit something other than a SQLException: " + actual);
 
         long observed = total();
         long ran = Db.count(SQL);
 
         assertTrue(
                 observed <= ran,
-                "echojar reported " + observed + " executions but the driver only ran " + ran
-        );
+                "echojar reported " + observed + " executions but the driver only ran " + ran);
         assertTrue(
                 observed >= ran - (ran / 100),
                 "an upper bound alone passes when nothing is counted, so the loss has to stay tiny: "
-                        + observed + " of " + ran
-        );
+                        + observed + " of " + ran);
     }
 }

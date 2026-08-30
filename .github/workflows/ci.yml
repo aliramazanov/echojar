@@ -2,8 +2,9 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
+    branches: [main, dev]
   workflow_dispatch:
 
 permissions:
@@ -81,6 +82,10 @@ jobs:
             -cp target/test-classes shop.HotPath 2>&1 | tee agent.out
           grep -q 'echo in 1 call site' agent.out \
             || { echo "the agent did not report the planted echo"; exit 1; }
+
+      - name: Check the documentation builds
+        if: matrix.os == 'ubuntu-latest'
+        run: mvn --batch-mode --no-transfer-progress --strict-checksums javadoc:javadoc
 
       - name: Check the build is reproducible
         if: matrix.os == 'ubuntu-latest'

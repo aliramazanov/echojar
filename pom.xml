@@ -20,6 +20,26 @@
     </license>
   </licenses>
 
+  <developers>
+    <developer>
+      <id>aliramazanov</id>
+      <name>Ali Ramazanov</name>
+      <url>https://github.com/aliramazanov</url>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:https://github.com/aliramazanov/echojar.git</connection>
+    <developerConnection>scm:git:git@github.com:aliramazanov/echojar.git</developerConnection>
+    <url>https://github.com/aliramazanov/echojar</url>
+    <tag>HEAD</tag>
+  </scm>
+
+  <issueManagement>
+    <system>GitHub Issues</system>
+    <url>https://github.com/aliramazanov/echojar/issues</url>
+  </issueManagement>
+
   <properties>
     <maven.compiler.release>25</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -29,6 +49,10 @@
     <jar.version>3.5.1</jar.version>
     <shade.version>3.6.2</shade.version>
     <surefire.version>3.5.6</surefire.version>
+    <javadoc.version>3.11.2</javadoc.version>
+    <source.version>3.3.1</source.version>
+    <gpg.version>3.2.7</gpg.version>
+    <central.version>0.7.0</central.version>
     <bootstrap.package>com/aliramazanov/echojar/bootstrap</bootstrap.package>
   </properties>
 
@@ -198,6 +222,91 @@
       </plugin>
 
     </plugins>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <version>${javadoc.version}</version>
+          <configuration>
+            <doclint>all</doclint>
+            <failOnWarnings>false</failOnWarnings>
+            <quiet>true</quiet>
+            <notimestamp>true</notimestamp>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-source-plugin</artifactId>
+          <version>${source.version}</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+
   </build>
+
+  <profiles>
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>${gpg.version}</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+            <configuration>
+              <gpgArguments>
+                <arg>--pinentry-mode</arg>
+                <arg>loopback</arg>
+              </gpgArguments>
+            </configuration>
+          </plugin>
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <version>${central.version}</version>
+            <extensions>true</extensions>
+            <configuration>
+              <publishingServerId>central</publishingServerId>
+              <autoPublish>false</autoPublish>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 
 </project>
