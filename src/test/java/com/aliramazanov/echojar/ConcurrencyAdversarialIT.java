@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.aliramazanov.echojar.bootstrap.findings.Finding;
@@ -35,6 +36,11 @@ class ConcurrencyAdversarialIT {
         List<Finding> findings = Ledger.findings();
         assertEquals(1, findings.size(), "expected one template, got " + findings.size());
         return findings.getFirst();
+    }
+
+    @BeforeEach
+    void reset() {
+        AgentState.reset();
     }
 
     @Test
