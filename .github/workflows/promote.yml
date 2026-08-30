@@ -1,0 +1,80 @@
+name: promote
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: promote
+  cancel-in-progress: true
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Compare the version on dev with the one on main
+        id: versions
+        run: |
+          cat > /tmp/version.py <<'PYTHON'
+          import sys, xml.etree.ElementTree as ET
+          ns = {"m": "http://maven.apache.org/POM/4.0.0"}
+          root = ET.parse(sys.argv[1]).getroot()
+          print(root.find("m:version", ns).text.strip())
+          PYTHON
+
+          git show origin/main:pom.xml > /tmp/main-pom.xml
+          dev=$(python3 /tmp/version.py pom.xml)
+          main=$(python3 /tmp/version.py /tmp/main-pom.xml)
+
+          echo "dev=$dev" >> "$GITHUB_OUTPUT"
+          echo "main=$main" >> "$GITHUB_OUTPUT"
+          echo "dev is $dev, main is $main"
+
+          if [ "$dev" = "$main" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "main already holds this version, nothing to promote"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open or update the promotion pull request
+        if: steps.versions.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.versions.outputs.dev }}
+        run: |
+          existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --base main --head dev \
+            --state open --json number --jq '.[0].number // empty')
+
+          body="Promotes dev to main for version $VERSION.
+
+          Merging this does not publish anything. To release, push the tag \`v$VERSION\` once this
+          has landed on main."
+
+          if [ -n "$existing" ]; then
+            gh pr edit "$existing" --repo "$GITHUB_REPOSITORY" \
+              --title "release $VERSION" --body "$body"
+            number="$existing"
+            echo "updated pull request #$number"
+          else
+            gh pr create --repo "$GITHUB_REPOSITORY" --base main --head dev \
+              --title "release $VERSION" --body "$body"
+            number=$(gh pr list --repo "$GITHUB_REPOSITORY" --base main --head dev \
+              --state open --json number --jq '.[0].number')
+            echo "opened pull request #$number"
+          fi
+
+          gh pr merge "$number" --repo "$GITHUB_REPOSITORY" --merge --auto \
+            || echo "auto merge could not be enabled, merge #$number by hand"

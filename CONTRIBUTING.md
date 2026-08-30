@@ -76,37 +76,66 @@ those apart.
 **Do not cache anything keyed by raw SQL without a length limit.** A cache bounded by entry count
 is not bounded in bytes. An application building large SQL will fill the heap.
 
-## Releasing
+## How a change becomes a release
 
-There are two branches. Work goes on dev, and main is only ever the last released state, so
-merging dev into main is what publishes a release.
+There are two branches and four workflows, and the only step you do by hand is the tag.
 
-Versions are worked out from commit messages, so the message decides the number. A commit starting
-`feat:` bumps the minor, `fix:` and `perf:` bump the patch, and anything else changes nothing.
-Until 1.0 a breaking change bumps the minor rather than the major, so a `feat!:` on 0.3.2 gives
-0.4.0. A message that does not start with one of those words is left out of the version, so a batch
-of commits with no feat and no fix produces no new version at all.
+Work goes on dev. Every push there and every pull request runs the build on Linux, macOS and
+Windows, along with the javadoc build, the checks on what ships inside the jar, and a rebuild that
+proves the jar comes out byte for byte the same twice.
 
-On dev, release-please keeps a pull request open that carries the next version number and the
-changelog entries for everything since the last release. It sits there and collects further commits
-as you push them. Merging it writes the new version into the pom and the changelog, and still
-releases nothing.
+Versions come from commit messages, so the message decides the number. Under 1.0 both `feat:` and
+`fix:` bump the patch, so 0.1.0 becomes 0.1.1, and only a breaking change marked with `!` moves the
+minor. A message that starts with anything else is left out of the version, so a batch with no feat
+and no fix produces no new version at all.
 
-Releasing is merging dev into main. The workflow reads the version out of the pom, stops quietly if
-that version is already tagged, and otherwise waits for you to approve it. Nobody else can approve
-it, and the approval can only come from main.
+After each push to dev, release-please keeps a pull request open holding the next version number
+and the changelog entries since the last release. It collects further commits as you push them, and
+merging it writes the version into the pom and the changelog.
 
-Once approved it runs the full build and four gates that only matter for a release. The jar has to
-carry the version being released, and it has to start and answer `list`. The build has to come out
-reproducible, so that anyone can rebuild the tag and compare hashes. The result is signed with a
-build provenance attestation. Any of those failing stops the release rather than publishing
-something that cannot be checked. Only then is the tag created and the release published with the
-jar and its checksum.
+That merge changes the version on dev, which is the signal to promote. A second workflow notices
+that dev and main now disagree, opens a pull request from dev to main titled with the new version,
+and turns on auto merge, so it lands by itself once the three builds pass. Main therefore only ever
+holds a state that was ready to ship.
 
-Publishing to Maven Central is set up but switched off, because it needs credentials this
-repository does not have. The `release` profile already builds the sources jar, the javadoc jar and
-the signatures. Turning it on means adding `MAVEN_USERNAME`, `MAVEN_PASSWORD`, `GPG_PRIVATE_KEY`
-and `GPG_PASSPHRASE` as repository secrets and adding a deploy step to the release workflow.
+Releasing is pushing the tag, and nothing else releases. Push `v0.1.1` and the release workflow
+starts, waits for you to approve it in the release environment, and refuses to go on unless the tag
+looks like a version, the tag sits on main, and the pom agrees with the tag. Then it builds, runs
+every test, checks the jar starts and carries its bootstrap, and rebuilds it to prove
+reproducibility. What comes out is signed with a build provenance attestation, sent to Maven
+Central when the credentials are there, and published as a GitHub release carrying the jar, its
+checksum and that version's changelog section. Released tags cannot be moved or deleted afterwards.
+
+If a release needs rebuilding, run the release workflow by hand from the Actions tab and give it an
+existing tag.
+
+## Publishing to Maven Central
+
+Publishing to Maven Central is wired into the release, but it only runs when the credentials are
+there. Without a `MAVEN_USERNAME` secret the step reports that it is skipping and the release goes
+out on GitHub alone, so nothing fails while the account is being set up.
+
+Four secrets switch it on, which are `MAVEN_USERNAME`, `MAVEN_PASSWORD`, `GPG_PRIVATE_KEY` and
+`GPG_PASSPHRASE`. The username and password come from a Central Portal account, and the key is an
+ascii armoured private GPG key whose public half has been sent to a keyserver, because Central
+checks the signature against one.
+
+The namespace is `io.github.aliramazanov`, which Central hands out for free to a GitHub account
+after asking you to create a public repository with a name it chooses. A namespace under `com.`
+would instead need you to own the matching domain and prove it with a DNS record.
+
+Four things go to Central, which are the agent jar, its sources, its javadoc and the pom. The
+bootstrap jar is deliberately left out, because it already sits inside the agent jar and its
+classes have to be loaded by the bootstrap loader rather than found on a classpath.
+
+A deployment does not go live on its own. It is uploaded, Central validates it, and then it waits
+for you in the portal until you publish it. Setting `central.autoPublish` to true removes that
+step once you trust the pipeline.
+
+The release profile also refuses to build in three cases, which are a version that is still a
+snapshot, a dependency that is still a snapshot, and a JDK older than 25. Those are the mistakes
+that cannot be taken back once they reach Central, since a published version can never be
+replaced.
 
 ## Reporting a bug
 

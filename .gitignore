@@ -18,3 +18,9 @@ replay_pid*.log
 .project
 
 .DS_Store
+.env
+*.env
+.secrets/
+*.asc
+*.gpg
+settings.xml
