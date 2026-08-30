@@ -35,7 +35,7 @@ public final class EchoJarAgent {
                 injected = true;
             }
         } catch (IOException | RuntimeException failure) {
-            System.err.println("echojar: could not inject the bootstrap jar, agent disabled");
+            System.err.println("echojar: could not inject the bootstrap jar, agent disabled: " + failure);
             return;
         }
 

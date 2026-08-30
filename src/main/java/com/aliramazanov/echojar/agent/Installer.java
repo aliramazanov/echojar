@@ -130,7 +130,7 @@ public final class Installer {
 
         ElementMatcher<? super TypeDescription> types = JdbcInstrumentation.globalIgnores(config);
 
-        return (type, loader, module, loaded, domain) -> loader == null || loader == platform ||
+        return (type, loader, _, _, _) -> loader == null || loader == platform ||
                 types.matches(type);
     }
 }

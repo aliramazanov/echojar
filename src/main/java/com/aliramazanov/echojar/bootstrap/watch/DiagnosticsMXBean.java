@@ -1,5 +1,8 @@
 package com.aliramazanov.echojar.bootstrap.watch;
 
+import javax.management.MXBean;
+
+@MXBean
 public interface DiagnosticsMXBean {
 
     long getExecutions();

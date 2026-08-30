@@ -107,13 +107,7 @@ final class Detector implements EchoSink {
             return attribution.site;
         }
 
-        synchronized (attribution) {
-            if (attribution.site == null) {
-                attribution.site = found;
-            } else if (!attribution.site.equals(found)) {
-                attribution.ambiguous = true;
-            }
-        }
+        attribution.sawSite(found);
 
         return found;
     }
@@ -149,5 +143,13 @@ final class Detector implements EchoSink {
         private volatile CallSite site;
         private volatile CallSite prepared;
         private volatile boolean ambiguous;
+
+        private synchronized void sawSite(CallSite found) {
+            if (site == null) {
+                site = found;
+            } else if (!site.equals(found)) {
+                ambiguous = true;
+            }
+        }
     }
 }

@@ -26,6 +26,12 @@ public final class Journal {
         return level;
     }
 
+    public static boolean writes(Level requested) {
+        Level current = level();
+
+        return current != Level.OFF && requested.ordinal() <= current.ordinal();
+    }
+
     public static void warn(String message) {
         write(Level.WARN, message);
     }
@@ -39,7 +45,7 @@ public final class Journal {
     }
 
     private static void write(@NotNull Level requested, String message) {
-        if (requested.ordinal() > level.ordinal() || level == Level.OFF) {
+        if (!writes(requested)) {
             return;
         }
 

@@ -57,7 +57,7 @@ public final class Chain {
         }
     }
 
-    public static boolean executeClaim(Object handle, Object statement) {
+    public static boolean executeClaim(Object handle) {
         try {
             if (!(handle instanceof Frame frame)) {
                 return false;

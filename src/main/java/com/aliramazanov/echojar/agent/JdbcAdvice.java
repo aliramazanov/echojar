@@ -53,7 +53,7 @@ final class JdbcAdvice {
                 @Advice.Enter Object frame,
                 @Advice.Thrown Throwable error
         ) {
-            if (!Chain.executeClaim(frame, statement) || error != null) {
+            if (!Chain.executeClaim(frame) || error != null) {
                 return;
             }
 
@@ -82,7 +82,7 @@ final class JdbcAdvice {
                 @Advice.Thrown Throwable error
         ) {
 
-            if (!Chain.executeClaim(frame, statement) || error != null) {
+            if (!Chain.executeClaim(frame) || error != null) {
                 return;
             }
 
@@ -103,7 +103,7 @@ final class JdbcAdvice {
                 @Advice.Enter Object frame,
                 @Advice.Thrown Throwable error
         ) {
-            if (!Chain.executeClaim(frame, statement) || error != null) {
+            if (!Chain.executeClaim(frame) || error != null) {
                 return;
             }
             int owed = Echo.batchExecuted(statement);

@@ -7,14 +7,16 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+
 import com.aliramazanov.echojar.bootstrap.findings.CallSite;
 import com.aliramazanov.echojar.bootstrap.findings.Finding;
 import com.aliramazanov.echojar.bootstrap.findings.Lease;
 import com.aliramazanov.echojar.bootstrap.findings.Ledger;
 import com.aliramazanov.echojar.bootstrap.findings.OpenLeases;
 import com.aliramazanov.echojar.bootstrap.watch.Diagnostics;
-import org.jetbrains.annotations.Contract;
-import org.jetbrains.annotations.NotNull;
+import com.aliramazanov.echojar.bootstrap.watch.Journal;
 
 final class Report {
 
@@ -124,8 +126,7 @@ final class Report {
             out.printf(
                     "%nechojar: %s in %s%n%n",
                     plural(echoes.size(), "echo", "echoes"),
-                    plural(sites, "call site", "call sites")
-            );
+                    plural(sites, "call site", "call sites"));
         } else {
             out.printf("%nechojar: %s%n%n", plural(echoes.size(), "echo", "echoes"));
         }
@@ -142,8 +143,7 @@ final class Report {
             out.printf(
                     "    %s in one %s%n",
                     plural(finding.peakPerLease(), "execution", "executions"),
-                    unit
-            );
+                    unit);
 
             CallSite site = finding.site();
 
@@ -152,8 +152,7 @@ final class Report {
             if (finding.leases() > 1) {
                 out.printf(
                         "    seen in %d %s, %d executions total%n",
-                        finding.leases(), units, finding.totalExecutions()
-                );
+                        finding.leases(), units, finding.totalExecutions());
             }
 
             age(out, finding);
@@ -178,8 +177,7 @@ final class Report {
             int effective,
             boolean requests,
             String unit,
-            String units
-    ) {
+            String units) {
         List<Finding> churn = view.findings().stream()
                 .filter(finding -> finding.peakPerLease() < effective)
                 .filter(finding -> finding.leases() >= effective)
@@ -200,13 +198,11 @@ final class Report {
                     "    %s across %d %s%n",
                     plural(finding.totalExecutions(), "execution", "executions"),
                     finding.leases(),
-                    units
-            );
+                    units);
 
             out.printf(
                     "    %s%n",
-                    finding.site() == null ? "call site not resolved" : finding.site()
-            );
+                    finding.site() == null ? "call site not resolved" : finding.site());
 
             out.println();
         }
@@ -240,8 +236,7 @@ final class Report {
             out.printf(
                     "  %d statements were not tracked, the template cache is full, raise " +
                             "templates=%n",
-                    overflowed
-            );
+                    overflowed);
         }
 
         long ambiguous = detector.ambiguous();
@@ -264,8 +259,7 @@ final class Report {
 
         out.printf(
                 "  only %d of %d units of work were inside a request. the rest ran on%n",
-                requests, total
-        );
+                requests, total);
 
         out.printf("  another thread, where echojar falls back to the connection lease and a%n");
         out.printf("  loop that reconnects for every query cannot be told from normal traffic.%n");
@@ -282,14 +276,14 @@ final class Report {
         out.printf(
                 "    %d executions across %d units of work%n",
                 health.executions(),
-                view.units()
-        );
+                view.units());
+
+        out.printf("    reporting at log level %s%n", Journal.level());
 
         if (health.units() > 0) {
             out.printf(
                     "    %d of those were requests, bounded by a servlet or filter%n",
-                    health.units()
-            );
+                    health.units());
         }
 
         long untracked = OpenLeases.untracked();
@@ -297,8 +291,7 @@ final class Report {
         if (untracked > 0) {
             out.printf(
                     "    %d open leases were not tracked, too many were open at once%n",
-                    untracked
-            );
+                    untracked);
         }
 
         if (health.leasesOpen() > 0) {
@@ -315,15 +308,13 @@ final class Report {
 
         out.printf(
                 "    %d statements templated, %d types transformed, %d stack walks%n",
-                health.statementsTemplated(), health.typesTransformed(), health.stackWalks()
-        );
+                health.statementsTemplated(), health.typesTransformed(), health.stackWalks());
 
         if (health.typesUnresolvable() > 0) {
             out.printf(
                     "    %d types had an incomplete hierarchy, which is normal for optional " +
                             "dependencies%n",
-                    health.typesUnresolvable()
-            );
+                    health.typesUnresolvable());
         }
 
         if (health.suppressedTotal() == 0) {
@@ -335,8 +326,7 @@ final class Report {
 
         health.suppressedBySite().forEach((site, count) -> out.printf(
                 "      %-10s %6d   first: %s%n", site, count,
-                health.firstFailureBySite().get(site)
-        ));
+                health.firstFailureBySite().get(site)));
     }
 
     private record View(List<Finding> findings, long units) {

@@ -13,11 +13,10 @@ class TotalityTest {
         assertDoesNotThrow(() -> {
             Chain.executeEnter(null);
             Chain.executeEnter(GARBAGE);
-            Chain.executeClaim(null, null);
-            Chain.executeClaim(GARBAGE, GARBAGE);
-            Chain.executeClaim(null, GARBAGE);
+            Chain.executeClaim(null);
+            Chain.executeClaim(GARBAGE);
         });
-        assertFalse(Chain.executeClaim(GARBAGE, GARBAGE),
+        assertFalse(Chain.executeClaim(GARBAGE),
                 "a handle that is not a frame counts nothing rather than counting wrongly");
     }
 

@@ -25,6 +25,7 @@ public final class OpenLeases {
             UNTRACKED.incrementAndGet();
             return;
         }
+
         if (OPEN.add(lease)) {
             TRACKED.incrementAndGet();
         }

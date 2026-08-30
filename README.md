@@ -148,9 +148,9 @@ forty way concurrency, 589,250 executions with exact agreement.
 ## Requirements
 
 **Java 25 or newer, on the target JVM as well as the build.** The agent is compiled to class
-file version 69, so an older JVM refuses it with `UnsupportedClassVersionError`. The source
-itself uses no language feature past Java 21, so building for an older target is a matter of
-lowering `maven.compiler.release`.
+file version 69, so an older JVM refuses it with `UnsupportedClassVersionError`. Java 22 is the
+floor for building: below it the unnamed `_` variables, which say that a matcher ignores most of
+the five parameters its interface hands it, stop being legal.
 
 Attaching to a running JVM needs dynamic agent loading, which JDK 21 and later warn about and
 a future release will disable by default. Start the target with

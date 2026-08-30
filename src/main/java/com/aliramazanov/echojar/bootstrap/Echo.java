@@ -247,14 +247,10 @@ public final class Echo {
                 return;
             }
 
-            Lease lease;
+            Lease lease = carrier.echojarTakeLease();
 
-            synchronized (carrier) {
-                lease = carrier.echojarLease();
-                if (lease == null) {
-                    return;
-                }
-                carrier.echojarLease(null);
+            if (lease == null) {
+                return;
             }
 
             Diagnostics.leaseClosed();
@@ -308,20 +304,7 @@ public final class Echo {
             return;
         }
 
-        Lease lease = carrier.echojarLease();
-
-        if (lease == null) {
-            synchronized (carrier) {
-                lease = carrier.echojarLease();
-
-                if (lease == null) {
-                    lease = new Lease();
-                    carrier.echojarLease(lease);
-                    OpenLeases.opened(lease);
-                    Diagnostics.leaseOpened();
-                }
-            }
-        }
+        Lease lease = carrier.echojarOpenLease();
 
         Diagnostics.execution(count);
         sink.executed(lease, lease.record(template, count));

@@ -51,12 +51,4 @@ final class Modules {
             Diagnostics.suppressed(Diagnostics.Site.TRANSFORM, failure);
         }
     }
-
-    static net.bytebuddy.dynamic.DynamicType.Builder<?> reading(
-            JavaModule module,
-            net.bytebuddy.dynamic.DynamicType.Builder<?> builder
-    ) {
-        ensureReads(module);
-        return builder;
-    }
 }

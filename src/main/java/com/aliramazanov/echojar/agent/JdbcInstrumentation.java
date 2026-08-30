@@ -70,8 +70,10 @@ final class JdbcInstrumentation {
 
     private static @NotNull AgentBuilder connectionFields(@NotNull AgentBuilder agent, EchoConfig config) {
         return agent.type(notYetLoaded(concrete(CONNECTION, config)))
-                .transform((builder, type, loader, module, domain) -> Modules.reading(
+                .transform((builder, type, _, module, domain) -> TransformJournal.weaving(
+                        type,
                         module,
+                        domain,
                         builder
                 ).implement(LeaseCarrier.class).defineField(
                         LEASE_FIELD,
@@ -83,8 +85,10 @@ final class JdbcInstrumentation {
 
     private static @NotNull AgentBuilder connectionAdvice(@NotNull AgentBuilder agent, EchoConfig config) {
         return agent.type(declares(CONNECTION, config))
-                .transform((builder, type, loader, module, domain) -> Modules.reading(
+                .transform((builder, type, _, module, domain) -> TransformJournal.weaving(
+                        type,
                                 module,
+                                domain,
                                 builder
                         ).visit(Advice.to(JdbcAdvice.CloseConnection.class)
                                 .on(named("close").and(takesNoArguments()).and(isPublic())))
@@ -97,8 +101,10 @@ final class JdbcInstrumentation {
 
     private static @NotNull AgentBuilder preparedFields(@NotNull AgentBuilder agent, EchoConfig config) {
         return agent.type(notYetLoaded(concrete(PREPARED, config)))
-                .transform((builder, type, loader, module, domain) -> Modules.reading(
+                .transform((builder, type, _, module, domain) -> TransformJournal.weaving(
+                        type,
                                 module,
+                                domain,
                                 builder
                         ).implement(SqlCarrier.class)
                         .defineField(TEMPLATE_FIELD, SqlTemplate.class, Visibility.PRIVATE)
@@ -113,8 +119,10 @@ final class JdbcInstrumentation {
 
     private static @NotNull AgentBuilder executeAdvice(@NotNull AgentBuilder agent, EchoConfig config) {
         return agent.type(declares(PREPARED, config).or(byName(PREPARED_BY_NAME, config)))
-                .transform((builder, type, loader, module, domain) -> Modules.reading(
+                .transform((builder, type, _, module, domain) -> TransformJournal.weaving(
+                        type,
                         module,
+                        domain,
                         builder
                 ).visit(Advice.to(JdbcAdvice.ExecutePrepared.class).on(namedOneOf(
                         "execute",
@@ -124,8 +132,10 @@ final class JdbcInstrumentation {
                 ).and(takesNoArguments()).and(isPublic()))))
                 .type(declares(STATEMENT, config).and(not(hasSuperType(named(PREPARED))))
                         .or(byName(STATEMENT_BY_NAME, config)))
-                .transform((builder, type, loader, module, domain) -> Modules.reading(
+                .transform((builder, type, _, module, domain) -> TransformJournal.weaving(
+                        type,
                         module,
+                        domain,
                         builder
                 ).visit(Advice.to(JdbcAdvice.ExecuteStatement.class).on(namedOneOf(
                         "execute",
@@ -137,8 +147,10 @@ final class JdbcInstrumentation {
 
     private static @NotNull AgentBuilder preparedBatchAdvice(@NotNull AgentBuilder agent, EchoConfig config) {
         return agent.type(declares(PREPARED, config))
-                .transform((builder, type, loader, module, domain) -> Modules.reading(
+                .transform((builder, type, _, module, domain) -> TransformJournal.weaving(
+                        type,
                                 module,
+                                domain,
                                 builder
                         ).visit(Advice.to(JdbcAdvice.AddBatchPrepared.class)
                                 .on(named("addBatch").and(takesNoArguments()).and(isPublic())))
@@ -151,8 +163,10 @@ final class JdbcInstrumentation {
 
     private static @NotNull AgentBuilder statementFields(@NotNull AgentBuilder agent, EchoConfig config) {
         return agent.type(notYetLoaded(concrete(STATEMENT, config).and(not(hasSuperType(named(
-                PREPARED)))))).transform((builder, type, loader, module, domain) -> Modules.reading(
+                PREPARED)))))).transform((builder, type, _, module, domain) -> TransformJournal.weaving(
+                        type,
                         module,
+                        domain,
                         builder
                 ).implement(StatementCarrier.class)
                 .defineField(BATCH_SQL_FIELD, List.class, Visibility.PRIVATE)
@@ -164,8 +178,10 @@ final class JdbcInstrumentation {
         ElementMatcher.Junction<TypeDescription> plain = declares(STATEMENT, config).and(not(
                 hasSuperType(named(PREPARED))));
         return agent.type(plain)
-                .transform((builder, type, loader, module, domain) -> Modules.reading(
+                .transform((builder, type, _, module, domain) -> TransformJournal.weaving(
+                        type,
                                 module,
+                                domain,
                                 builder
                         ).visit(Advice.to(JdbcAdvice.AddBatchStatement.class)
                                 .on(named("addBatch").and(takesArguments(1))
@@ -179,7 +195,7 @@ final class JdbcInstrumentation {
 
     @Contract(pure = true)
     private static @NotNull RawMatcher notYetLoaded(ElementMatcher<? super TypeDescription> types) {
-        return (type, loader, module, loaded, domain) -> loaded == null && types.matches(type);
+        return (type, _, _, loaded, _) -> loaded == null && types.matches(type);
     }
 
     private static ElementMatcher.@NotNull Junction<TypeDescription> concrete(

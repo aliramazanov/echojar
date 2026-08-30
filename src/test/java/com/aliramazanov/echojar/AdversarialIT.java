@@ -224,7 +224,7 @@ class AdversarialIT {
         String report = report();
 
         assertTrue(
-                report.contains("20 executions in one request"),
+                report.contains("20 executions in one connection lease"),
                 "a pool that never closes the driver's own connection would otherwise be invisible:\n" + report
         );
     }
@@ -238,7 +238,7 @@ class AdversarialIT {
             statement.executeQuery();
         }
 
-        assertTrue(report().contains("20 executions in one request"));
+        assertTrue(report().contains("20 executions in one connection lease"));
         connection.close();
 
         Finding finding = only();
@@ -262,7 +262,7 @@ class AdversarialIT {
             statement.executeQuery();
         }
 
-        assertTrue(report().contains("6 executions in one request"));
+        assertTrue(report().contains("6 executions in one connection lease"));
 
         for (int query = 0; query < 5; query++) {
             statement.executeQuery();
@@ -271,7 +271,7 @@ class AdversarialIT {
         String later = report();
 
         assertTrue(
-                later.contains("11 executions in one request"),
+                later.contains("11 executions in one connection lease"),
                 "the second report shows the lease as it stands now:\n" + later
         );
     }
