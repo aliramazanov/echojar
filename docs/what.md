@@ -40,7 +40,7 @@ The report is three facts and nothing else. The query with its values stripped o
 thousand lookups differing only by an id show up as one line. How many times it ran inside a
 single unit of work. And the line of your own code that ran it.
 
-There is an example of the output at the top of the [README](../README.md).
+There is an example of the output in [use.md](use.md).
 
 ## What it does not do
 

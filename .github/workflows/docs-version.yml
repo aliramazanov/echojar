@@ -1,0 +1,75 @@
+name: docs version
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The released tag whose version should go into the docs
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-version
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: dev
+
+      - name: Work out the version the tag names
+        id: version
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          version="${TAG#v}"
+
+          if ! printf '%s' "$version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "$TAG is not a release tag, leaving the docs alone"
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "the docs should say $version"
+
+      - name: Put it in the dependency snippet
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          sed -i -E "/<groupId>io\.github\.aliramazanov<\/groupId>/,/<\/dependency>/ \
+            s|<version>[^<]*</version>|<version>$VERSION</version>|" docs/use.md
+          git --no-pager diff --stat docs/use.md
+
+      - name: Open a pull request if it changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if git diff --quiet docs/use.md; then
+            echo "the docs already say $VERSION, nothing to do"
+            exit 0
+          fi
+
+          branch="docs-version-$VERSION"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add docs/use.md
+          git commit -m "docs: set the published version to $VERSION"
+          git push -u origin "$branch"
+
+          gh pr create --repo "$GITHUB_REPOSITORY" --base dev --head "$branch" \
+            --title "docs: set the published version to $VERSION" \
+            --body "The dependency snippet in the docs now points at $VERSION, which was just released."
