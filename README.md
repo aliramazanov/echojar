@@ -1,5 +1,10 @@
 # echojar
 
+[![maven central](https://img.shields.io/maven-central/v/io.github.aliramazanov/echojar?label=maven%20central)](https://central.sonatype.com/artifact/io.github.aliramazanov/echojar)
+[![javadoc](https://javadoc.io/badge2/io.github.aliramazanov/echojar/javadoc.svg)](https://javadoc.io/doc/io.github.aliramazanov/echojar)
+[![ci](https://img.shields.io/github/actions/workflow/status/aliramazanov/echojar/ci.yml?branch=dev&label=ci)](https://github.com/aliramazanov/echojar/actions/workflows/ci.yml)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 echojar is a Java agent that finds N+1 queries in a program while it runs, and tells you the line
 of code that caused them. You do not change the application, there is no dependency to add and no
 annotation to write.
@@ -88,6 +93,16 @@ out of this repository:
 ```bash
 sha256sum -c echojar.jar.sha256
 gh attestation verify echojar.jar --repo aliramazanov/echojar
+```
+
+The same jar is on Maven Central, which is the easier route if you want it fetched by a build:
+
+```xml
+<dependency>
+  <groupId>io.github.aliramazanov</groupId>
+  <artifactId>echojar</artifactId>
+  <version>0.1.0</version>
+</dependency>
 ```
 
 ## Build
