@@ -28,6 +28,7 @@ final class Report {
     private final Detector detector;
     private final boolean always;
     private final long staleAfter;
+    private final boolean json;
 
     Report(int threshold, Detector detector) {
         this(threshold, detector, false);
@@ -37,11 +38,45 @@ final class Report {
         this(threshold, detector, alwaysShowDiagnostics, STALE_AFTER_MILLIS);
     }
 
+    Report(int threshold, Detector detector, boolean alwaysShowDiagnostics, boolean asJson) {
+        this(threshold, detector, alwaysShowDiagnostics, STALE_AFTER_MILLIS, asJson);
+    }
+
     Report(int threshold, Detector detector, boolean alwaysShowDiagnostics, long staleAfterMillis) {
+        this(threshold, detector, alwaysShowDiagnostics, staleAfterMillis, false);
+    }
+
+    Report(
+            int threshold,
+            Detector detector,
+            boolean alwaysShowDiagnostics,
+            long staleAfterMillis,
+            boolean asJson
+    ) {
         this.threshold = threshold;
         this.detector = detector;
         this.always = alwaysShowDiagnostics;
         this.staleAfter = staleAfterMillis;
+        this.json = asJson;
+    }
+
+    /**
+     * Whether anything ran at least {@code limit} times inside one unit of work. This is what the
+     * {@code fail} option asks, and it is deliberately separate from printing so that a caller can
+     * decide to end the JVM after the report has already been written.
+     */
+    boolean exceeds(int limit) {
+        if (limit <= 0) {
+            return false;
+        }
+
+        for (Finding finding : view().findings()) {
+            if (finding.peakPerLease() >= limit) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     @Contract(pure = true)
@@ -93,11 +128,110 @@ final class Report {
         return count + " " + (count == 1 ? one : many);
     }
 
+    private void printJson(@NotNull PrintStream out, int effective) {
+        View view = view();
+        Unit named = unit(view);
+        Diagnostics.Snapshot health = Diagnostics.snapshot();
+
+        List<Finding> echoes = view.findings().stream()
+                .filter(finding -> finding.peakPerLease() >= effective)
+                .sorted(Comparator.comparingInt(Finding::peakPerLease).reversed())
+                .toList();
+
+        out.print("{");
+        out.printf("\"generated\":%s,", quote(Instant.now().toString()));
+        out.printf("\"unit\":%s,", quote(named.one()));
+        out.printf("\"threshold\":%d,", effective);
+        out.printf("\"unitsSeen\":%d,", view.units());
+        out.print("\"echoes\":[");
+
+        for (int index = 0; index < echoes.size(); index++) {
+            Finding finding = echoes.get(index);
+
+            if (index > 0) {
+                out.print(",");
+            }
+
+            out.print("{");
+            out.printf("\"sql\":%s,", quote(finding.template().text()));
+            out.printf("\"executions\":%d,", finding.peakPerLease());
+            out.printf("\"totalExecutions\":%d,", finding.totalExecutions());
+            out.printf("\"units\":%d,", finding.leases());
+            out.printf("\"callSite\":%s", site(finding.site()));
+            out.print("}");
+        }
+
+        out.print("],");
+        out.print("\"health\":{");
+        out.printf("\"healthy\":%b,", health.healthy());
+        out.printf("\"executions\":%d,", health.executions());
+        out.printf("\"unitsClosed\":%d,", health.leasesClosed());
+        out.printf("\"unitsOpen\":%d,", health.leasesOpen());
+        out.printf("\"statementsTemplated\":%d,", health.statementsTemplated());
+        out.printf("\"typesTransformed\":%d,", health.typesTransformed());
+        out.printf("\"stackWalks\":%d,", health.stackWalks());
+        out.printf("\"suppressedFailures\":%d", health.suppressedTotal());
+        out.print("}}");
+        out.println();
+        out.flush();
+    }
+
+    @Contract(pure = true)
+    private static @NotNull String site(CallSite site) {
+        if (site == null) {
+            return "null";
+        }
+
+        return "{\"class\":" + quote(site.declaringClass())
+                + ",\"method\":" + quote(site.methodName())
+                + ",\"file\":" + quote(site.fileName())
+                + ",\"line\":" + site.lineNumber() + "}";
+    }
+
+    /**
+     * Turns a string into a JSON literal. SQL arrives here with quotes, backslashes and sometimes
+     * newlines in it, and a report that cannot be parsed is worse than no report at all.
+     */
+    @Contract(pure = true)
+    static @NotNull String quote(String value) {
+        if (value == null) {
+            return "null";
+        }
+
+        StringBuilder json = new StringBuilder(value.length() + 2).append('"');
+
+        for (int index = 0; index < value.length(); index++) {
+            char letter = value.charAt(index);
+
+            switch (letter) {
+                case '"' -> json.append("\\\"");
+                case '\\' -> json.append("\\\\");
+                case '\n' -> json.append("\\n");
+                case '\r' -> json.append("\\r");
+                case '\t' -> json.append("\\t");
+                default -> {
+                    if (letter < 0x20) {
+                        json.append(String.format("\\u%04x", (int) letter));
+                    } else {
+                        json.append(letter);
+                    }
+                }
+            }
+        }
+
+        return json.append('"').toString();
+    }
+
     void print(PrintStream out) {
         print(out, 0);
     }
 
     void print(@NotNull PrintStream out, int override) {
+        if (json) {
+            printJson(out, override > 0 ? override : threshold);
+            return;
+        }
+
         int effective = override > 0 ? override : threshold;
         View view = view();
         Unit named = unit(view);

@@ -33,6 +33,7 @@ import org.jetbrains.annotations.NotNull;
 public final class Installer {
 
     private static final int ONE_CLASS_AT_A_TIME = 1;
+    private static final int FAILED_EXIT_STATUS = 1;
 
     private Installer() {
     }
@@ -69,10 +70,39 @@ public final class Installer {
         builder = RequestInstrumentation.apply(builder, config);
         builder.installOn(instrumentation);
 
-        Report report = new Report(config.threshold(), detector, config.diagnostics());
+        Report report =
+                new Report(config.threshold(), detector, config.diagnostics(), config.json());
+
         LiveReport.install(report::print);
+
+        int failAt = config.failThreshold();
+
         Runtime.getRuntime()
-                .addShutdownHook(new Thread(() -> report.print(Journal.out()), "echojar-report"));
+                .addShutdownHook(new Thread(() -> finish(report, failAt), "echojar-report"));
+    }
+
+    /**
+     * Prints the report as the JVM shuts down, and ends the run with a failing status when the
+     * {@code fail} option was given and something crossed it.
+     *
+     * <p>This uses {@link Runtime#halt} rather than {@code System.exit}, because calling exit from
+     * inside a shutdown hook deadlocks. The cost is that any shutdown hook which has not run yet is
+     * skipped, which is why none of this happens unless {@code fail} was asked for.
+     */
+    private static void finish(Report report, int failAt) {
+        PrintStream out = Journal.out();
+        report.print(out);
+
+        if (!report.exceeds(failAt)) {
+            return;
+        }
+
+        out.printf(
+                "%nechojar: failing this run, a statement ran %d or more times in one unit of "
+                        + "work%n", failAt);
+        out.flush();
+
+        Runtime.getRuntime().halt(FAILED_EXIT_STATUS);
     }
 
     private static void dump(EchoConfig config) {

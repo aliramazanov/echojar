@@ -75,8 +75,38 @@ Comma separated, either after `-javaagent:echojar.jar=` or as `-Dechojar.*` syst
 | `templates` | `5000` | how many distinct statements to remember |
 | `out` | stderr | write the report to a file |
 | `log` | `warn` | how much echojar says about itself: `off`, `warn`, `info`, `debug` |
+| `fail` | unset | fail the run if a statement runs this many times in one unit of work |
+| `format` | `text` | `json` prints the report as one line of JSON instead of prose |
 | `diagnostics` | `false` | always print the health block, not only after a problem |
 | `verbose` | `false` | log every class echojar looks at |
+
+## Failing a build
+
+Give `fail` a number and echojar ends the run with a failing status when any statement crosses it,
+so an N+1 that creeps in stops the pipeline rather than waiting to be noticed in production:
+
+```bash
+mvn verify -DargLine="-javaagent:echojar.jar=fail=25"
+```
+
+The report still prints before the run ends, so the failure says which query and which line.
+
+This is off unless you ask for it, because ending the JVM this way skips any shutdown work the
+application had left to do. That is a fair trade in a build and a bad one in production.
+
+## Reading it from a script
+
+`format=json` prints the whole report as a single line of JSON, which is easier to feed into a
+dashboard or a pull request comment than the prose version:
+
+```bash
+java -javaagent:echojar.jar=format=json -jar yourapp.jar
+```
+
+It carries the same numbers as the text report, with each echo holding the SQL, how many times it
+ran in the busiest unit of work, the totals, and the call site broken into class, method, file and
+line. The health block comes along as well, so a script can tell the difference between a clean run
+and one where the agent quietly gave up.
 
 ## What it needs
 

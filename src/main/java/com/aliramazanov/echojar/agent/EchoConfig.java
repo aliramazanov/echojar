@@ -52,6 +52,8 @@ final class EchoConfig {
     private final boolean diagnostics;
     private final Command command;
     private final int thresholdIfSet;
+    private final int failThreshold;
+    private final boolean json;
 
     private EchoConfig(Map<String, String> options) {
         this.threshold = atLeastOne(integer(options, "threshold", 5), 5);
@@ -68,6 +70,8 @@ final class EchoConfig {
         this.diagnostics = bool(options, "diagnostics", false);
         this.command = Command.of(options.get("command"));
         this.thresholdIfSet = options.containsKey("threshold") ? threshold : 0;
+        this.failThreshold = Math.max(0, integer(options, "fail", 0));
+        this.json = "json".equalsIgnoreCase(options.get("format"));
     }
 
     @Contract("_ -> new")
@@ -171,6 +175,14 @@ final class EchoConfig {
 
     Command command() {
         return command;
+    }
+
+    int failThreshold() {
+        return failThreshold;
+    }
+
+    boolean json() {
+        return json;
     }
 
     int thresholdIfSet() {
