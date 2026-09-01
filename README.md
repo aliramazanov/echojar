@@ -9,8 +9,11 @@ echojar is a Java agent that finds N+1 queries in a program while it runs, and t
 of code that caused them. You do not change the application, there is no dependency to add and no
 annotation to write.
 
+<img src="docs/report.svg" alt="echojar reporting one N+1 query and the line of code that caused it" width="806">
+
 It attaches to a process that is already running, so it works on the program in production that is
-slow for reasons nobody can name.
+slow for reasons nobody can name. Give it a number with `fail` and it ends the run instead, so an
+N+1 that creeps in stops the build rather than waiting to be found in production.
 
 ## Documentation
 

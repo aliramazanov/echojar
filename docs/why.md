@@ -25,6 +25,28 @@ it you are on.
 The cost of that choice is that echojar sees SQL and not entities. It can tell you a query ran
 forty times and which line ran it, but it cannot tell you which mapping caused it.
 
+## Why not one of the tools that already exist
+
+There are several, and the useful thing to say about them is not that they are bad but that they
+break for the same reason.
+
+The test time detectors hook into the ORM. They subclass a Hibernate SPI, or they read proxy class
+names out of a stack trace to work out which mapping was responsible. That works until the ORM
+changes, and then it stops. Hibernate 6 changed proxy generation, JDK 16 changed proxy naming, and
+Jakarta moved every package, and each of those broke tools in this space. As of September 2026
+`db-util` has been archived by its own maintainer, `p6spy` has not had a commit since February 2022
+while carrying dozens of open issues, and `spring-hibernate-query-utils` still has open reports
+about Hibernate 6 and newer JDKs.
+
+echojar watches implementations of `java.sql` instead. That interface has barely moved in twenty
+years, and every ORM, every pool and every framework has to go through it, so there is nothing for
+an ORM upgrade to break. This is the reason to use it rather than any cleverness in the detection
+itself.
+
+What that costs is described above. echojar reports SQL rather than entities, so it can tell you a
+query ran forty times and which line ran it, but not which mapping produced it. The tools that
+break are the ones that know about your mappings, and that is not a coincidence.
+
 ## Why counting is the hard part
 
 The obvious approach is to count the calls to `executeQuery`, and it is wrong, and this is where

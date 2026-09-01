@@ -118,6 +118,30 @@ Attaching to a running JVM needs dynamic agent loading. JDK 21 and later print a
 and a future release will turn it off by default, so start the application with
 `-XX:+EnableDynamicAgentLoading` if you want the warning gone.
 
+## Warnings you will see at startup
+
+Attaching echojar makes the JVM print a few lines before your application starts. They look
+alarming and none of them mean anything is wrong:
+
+```console
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because
+bootstrap classpath has been appended
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by ...ClassInjector$UsingUnsafe...
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+```
+
+The first is the JVM saying that class data sharing is switched off for your own classes, which
+happens because echojar adds its counting jar to the bootstrap loader. That is the whole design and
+it costs a little startup time on a cold JVM.
+
+The rest come from ByteBuddy, the library echojar uses to rewrite classes, which touches a
+deprecated method while it works out how to load classes on this JVM. It happens once, during
+startup, and echojar cannot switch it off from the outside. ByteBuddy will have to move off that
+method before the JDK removes it, and echojar picks up such fixes as the library is updated.
+
+If the noise matters in your logs, `-XX:+EnableDynamicAgentLoading` removes the separate warning
+about attaching to a running JVM, and the rest can be left alone.
+
 ## Where it has been tried
 
 PostgreSQL, MySQL, MariaDB, SQL Server, CockroachDB, H2, HSQLDB, Derby and SQLite, behind HikariCP,
