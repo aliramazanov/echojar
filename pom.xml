@@ -50,7 +50,7 @@
     <javadoc.version>3.11.2</javadoc.version>
     <source.version>3.3.1</source.version>
     <gpg.version>3.2.7</gpg.version>
-    <central.version>0.9.0</central.version>
+    <central.version>0.11.0</central.version>
     <enforcer.version>3.5.0</enforcer.version>
     <central.autoPublish>false</central.autoPublish>
     <bootstrap.package>com/aliramazanov/echojar/bootstrap</bootstrap.package>
