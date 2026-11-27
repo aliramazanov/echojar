@@ -46,7 +46,7 @@
     <junit.version>5.11.4</junit.version>
     <jar.version>3.5.1</jar.version>
     <shade.version>3.6.2</shade.version>
-    <surefire.version>3.5.6</surefire.version>
+    <surefire.version>3.6.0</surefire.version>
     <javadoc.version>3.11.2</javadoc.version>
     <source.version>3.3.1</source.version>
     <gpg.version>3.2.7</gpg.version>
