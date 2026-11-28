@@ -49,7 +49,7 @@
     <surefire.version>3.6.0</surefire.version>
     <javadoc.version>3.11.2</javadoc.version>
     <source.version>3.3.1</source.version>
-    <gpg.version>3.2.7</gpg.version>
+    <gpg.version>3.2.8</gpg.version>
     <central.version>0.11.0</central.version>
     <enforcer.version>3.5.0</enforcer.version>
     <central.autoPublish>false</central.autoPublish>
